@@ -1,0 +1,29 @@
+// storage.rules
+// Deploy with: firebase deploy --only storage
+// Or paste into Firebase Console → Storage → Rules
+
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ── User attachments — scoped to authenticated user only ──
+    match /users/{uid}/attachments/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // ── Max file size: 10MB ──
+    // (Enforced in client code as well; this is a server-side backstop)
+    match /users/{uid}/attachments/{taskId}/{filename} {
+      allow write: if request.auth != null
+                   && request.auth.uid == uid
+                   && request.resource.size <= 10 * 1024 * 1024
+                   && request.resource.contentType.matches(
+                        'application/(pdf|msword|vnd\\.ms-excel|vnd\\.openxmlformats-officedocument\\..*)');
+    }
+
+    // ── Deny everything else ──
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
