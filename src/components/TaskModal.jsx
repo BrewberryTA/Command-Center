@@ -13,6 +13,7 @@ const defaultTask = {
   recurringDay: 'Monday',
   recurringTime: '09:00',
   recurringDayOfMonth: 1,
+  weekdaysOnly: false,
 };
 
 export function TaskModal({ onClose, onSave }) {
@@ -188,6 +189,21 @@ export function TaskModal({ onClose, onSave }) {
               value={form.dueDate}
               onChange={(e) => set('dueDate', e.target.value)}
             />
+          </div>
+        )}
+
+        {/* Daily fields */}
+        {form.type === 'daily' && (
+          <div style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <input
+              id="weekdaysOnly"
+              type="checkbox"
+              checked={form.weekdaysOnly}
+              onChange={(e) => set('weekdaysOnly', e.target.checked)}
+            />
+            <label htmlFor="weekdaysOnly" style={{ margin: 0, cursor: 'pointer' }}>
+              Weekdays only (Mon–Fri)
+            </label>
           </div>
         )}
 
