@@ -165,6 +165,11 @@ export function TaskCard({
                 @ {formatTime(task.dueDate)}
               </span>
             )}
+            {task.type === 'daily' && task.weekdaysOnly && (
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-secondary)' }}>
+                Mon–Fri
+              </span>
+            )}
             {noteCount > 0 && (
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)' }}>
                 💬 {noteCount}
@@ -287,6 +292,24 @@ export function TaskCard({
                   <option>No progress</option>
                   <option>Stuck</option>
                 </select>
+              </div>
+            )}
+
+            {/* Weekdays only (daily) */}
+            {task.type === 'daily' && (
+              <div>
+                <label>Weekdays Only</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 0' }}>
+                  <input
+                    id={`weekdaysOnly-${task.id}`}
+                    type="checkbox"
+                    checked={!!task.weekdaysOnly}
+                    onChange={(e) => onUpdate(task.id, { weekdaysOnly: e.target.checked })}
+                  />
+                  <label htmlFor={`weekdaysOnly-${task.id}`} style={{ margin: 0, cursor: 'pointer', fontSize: '13px', color: 'var(--text-primary)' }}>
+                    Mon–Fri only
+                  </label>
+                </div>
               </div>
             )}
 
