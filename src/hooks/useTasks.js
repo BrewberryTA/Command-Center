@@ -81,6 +81,7 @@ export function useTasks(uid) {
         attachments: [],
         createdAt: Timestamp.now(),
         rolledOver: false,
+        weekdaysOnly: false,
         ...taskData,
         // Ensure dueDate is a Timestamp if provided as Date
         dueDate: taskData.dueDate
@@ -235,7 +236,11 @@ export function useTasks(uid) {
           t.dueDate >= today &&
           t.dueDate < tomorrow
       ),
-      daily: tasks.filter((t) => t.type === 'daily'),
+      daily: tasks.filter(
+        (t) =>
+          t.type === 'daily' &&
+          !(t.weekdaysOnly && (dayOfWeek === 'Saturday' || dayOfWeek === 'Sunday'))
+      ),
       weekly: tasks.filter(
         (t) => t.type === 'weekly' && t.recurringDay === dayOfWeek
       ),
