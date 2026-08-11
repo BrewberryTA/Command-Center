@@ -75,13 +75,13 @@ export function useTasks(uid) {
         recurringDay: null,
         recurringTime: null,
         recurringDayOfMonth: null,
+        weekdaysOnly: false,
         completed: false,
         completedDate: null,
         notes: [],
         attachments: [],
         createdAt: Timestamp.now(),
         rolledOver: false,
-        weekdaysOnly: false,
         ...taskData,
         // Ensure dueDate is a Timestamp if provided as Date
         dueDate: taskData.dueDate
@@ -222,6 +222,7 @@ export function useTasks(uid) {
 
     const dayOfWeek = today.toLocaleDateString('en-US', { weekday: 'long' });
     const dayOfMonth = today.getDate();
+    const isWeekend = dayOfWeek === 'Saturday' || dayOfWeek === 'Sunday';
 
     return {
       open: tasks.filter(
@@ -237,9 +238,7 @@ export function useTasks(uid) {
           t.dueDate < tomorrow
       ),
       daily: tasks.filter(
-        (t) =>
-          t.type === 'daily' &&
-          !(t.weekdaysOnly && (dayOfWeek === 'Saturday' || dayOfWeek === 'Sunday'))
+        (t) => t.type === 'daily' && !(t.weekdaysOnly && isWeekend)
       ),
       weekly: tasks.filter(
         (t) => t.type === 'weekly' && t.recurringDay === dayOfWeek

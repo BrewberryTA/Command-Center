@@ -194,14 +194,13 @@ export function TaskModal({ onClose, onSave }) {
 
         {/* Daily fields */}
         {form.type === 'daily' && (
-          <div style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <input
-              id="weekdaysOnly"
-              type="checkbox"
-              checked={form.weekdaysOnly}
-              onChange={(e) => set('weekdaysOnly', e.target.checked)}
-            />
-            <label htmlFor="weekdaysOnly" style={{ margin: 0, cursor: 'pointer' }}>
+          <div style={{ marginBottom: '14px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={form.weekdaysOnly || false}
+                onChange={(e) => set('weekdaysOnly', e.target.checked)}
+              />
               Weekdays only (Mon–Fri)
             </label>
           </div>

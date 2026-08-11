@@ -140,6 +140,9 @@ export function TaskCard({
             <span className={`badge badge-${TYPE_COLORS[task.type] || 'muted'}`}>
               {task.type}
             </span>
+            {task.type === 'daily' && task.weekdaysOnly && (
+              <span className="badge badge-muted">Mon–Fri</span>
+            )}
             {task.priority && (
               <span className={`badge badge-${PRIORITY_COLORS[task.priority] || 'muted'}`}>
                 {task.priority}
@@ -163,11 +166,6 @@ export function TaskCard({
             {task.dueDate && task.type === 'event' && (
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-secondary)' }}>
                 @ {formatTime(task.dueDate)}
-              </span>
-            )}
-            {task.type === 'daily' && task.weekdaysOnly && (
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-secondary)' }}>
-                Mon–Fri
               </span>
             )}
             {noteCount > 0 && (
@@ -295,21 +293,18 @@ export function TaskCard({
               </div>
             )}
 
-            {/* Weekdays only (daily) */}
+            {/* Schedule (daily) */}
             {task.type === 'daily' && (
               <div>
-                <label>Weekdays Only</label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 0' }}>
-                  <input
-                    id={`weekdaysOnly-${task.id}`}
-                    type="checkbox"
-                    checked={!!task.weekdaysOnly}
-                    onChange={(e) => onUpdate(task.id, { weekdaysOnly: e.target.checked })}
-                  />
-                  <label htmlFor={`weekdaysOnly-${task.id}`} style={{ margin: 0, cursor: 'pointer', fontSize: '13px', color: 'var(--text-primary)' }}>
-                    Mon–Fri only
-                  </label>
-                </div>
+                <label>Schedule</label>
+                <select
+                  className="input"
+                  value={task.weekdaysOnly ? 'weekdays' : 'everyday'}
+                  onChange={(e) => onUpdate(task.id, { weekdaysOnly: e.target.value === 'weekdays' })}
+                >
+                  <option value="everyday">Every day</option>
+                  <option value="weekdays">Weekdays only (Mon–Fri)</option>
+                </select>
               </div>
             )}
 
