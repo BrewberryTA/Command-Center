@@ -237,9 +237,13 @@ export function useTasks(uid) {
           t.dueDate >= today &&
           t.dueDate < tomorrow
       ),
-      daily: tasks.filter(
-        (t) => t.type === 'daily' && !(t.weekdaysOnly && isWeekend)
-      ),
+      daily: tasks
+        .filter((t) => t.type === 'daily' && !(t.weekdaysOnly && isWeekend))
+        .map((t) => {
+          const completedToday =
+            t.completed && t.completedDate && t.completedDate >= today && t.completedDate < tomorrow;
+          return { ...t, completed: !!completedToday };
+        }),
       weekly: tasks.filter(
         (t) => t.type === 'weekly' && t.recurringDay === dayOfWeek
       ),
