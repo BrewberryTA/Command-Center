@@ -185,3 +185,109 @@ label { display: block; font-size: 12px; font-weight: 500; color: var(--text-sec
   .app-container { padding: 0 12px; }
   .modal-box { max-height: 95vh; border-radius: var(--radius); }
 }
+
+/* ── Dashboard 3-column layout ─────────────────────────────── */
+.dashboard-columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+.dashboard-column-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--border-active);
+}
+
+@media (max-width: 900px) {
+  /* Horizontal swipe between the 3 columns on small screens */
+  .dashboard-columns {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    gap: 0;
+    margin: 0 -12px;
+    padding: 0 12px 8px;
+    scrollbar-width: thin;
+  }
+  .dashboard-column {
+    flex: 0 0 92%;
+    scroll-snap-align: start;
+    padding-right: 14px;
+  }
+  .dashboard-swipe-hint {
+    display: flex;
+  }
+}
+
+.dashboard-swipe-hint {
+  display: none;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  letter-spacing: 0.03em;
+}
+
+/* ── Confirm-complete popover (open tasks) ─────────────────── */
+.confirm-complete-popover {
+  position: absolute;
+  top: 22px;
+  left: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: white;
+  border: 1px solid var(--border-active);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  font-size: 11px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  animation: fadeIn 150ms ease;
+}
+
+/* ── Mobile "add task" floating action button ──────────────── */
+.mobile-fab {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 90;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: white;
+  border: none;
+  font-size: 20px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-lg);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.mobile-fab:hover { background: var(--accent-hover); }
+
+@media (max-width: 768px) {
+  .mobile-fab {
+    right: 20px;
+    bottom: max(20px, env(safe-area-inset-bottom));
+    width: 58px;
+    height: 58px;
+    font-size: 30px;
+    box-shadow: 0 8px 20px rgba(37,99,235,0.4), var(--shadow-lg);
+  }
+}

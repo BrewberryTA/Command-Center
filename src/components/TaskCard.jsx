@@ -45,6 +45,7 @@ export function TaskCard({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmComplete, setConfirmComplete] = useState(false);
   const [editField, setEditField] = useState(null); // which field is being edited inline
   const [editValue, setEditValue] = useState('');
 
@@ -66,6 +67,23 @@ export function TaskCard({
       return;
     }
     await onDelete(task.id);
+  };
+
+  // Open tasks require a confirmation before being marked complete — a mis-tap
+  // otherwise silently removes the task from the visible Open Tasks list.
+  const requiresCompleteConfirm = task.type === 'open' && !task.completed;
+
+  const handleCheckboxClick = (e) => {
+    e.stopPropagation();
+    if (requiresCompleteConfirm) {
+      if (!confirmComplete) {
+        setConfirmComplete(true);
+        setTimeout(() => setConfirmComplete(false), 4000);
+        return;
+      }
+      setConfirmComplete(false);
+    }
+    onToggleComplete(task.id, task.completed);
   };
 
   const noteCount = task.notes?.length || 0;
@@ -92,28 +110,50 @@ export function TaskCard({
         onClick={() => setExpanded((e) => !e)}
       >
         {/* Checkbox (for completable types) */}
-        <div
-          onClick={(e) => { e.stopPropagation(); onToggleComplete(task.id, task.completed); }}
-          style={{
-            width: '16px',
-            height: '16px',
-            minWidth: '16px',
-            border: `1px solid ${task.completed ? 'var(--green)' : 'var(--border-active)'}`,
-            borderRadius: 'var(--radius-sm)',
-            background: task.completed ? 'var(--green)' : 'var(--bg-input)',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '10px',
-            color: 'var(--bg-primary)',
-            fontWeight: 'bold',
-            marginTop: '1px',
-            transition: 'all 200ms ease',
-            flexShrink: 0,
-          }}
-        >
-          {task.completed ? '✓' : ''}
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <div
+            onClick={handleCheckboxClick}
+            style={{
+              width: '16px',
+              height: '16px',
+              minWidth: '16px',
+              border: `1px solid ${confirmComplete ? 'var(--accent)' : (task.completed ? 'var(--green)' : 'var(--border-active)')}`,
+              borderRadius: 'var(--radius-sm)',
+              background: task.completed ? 'var(--green)' : 'var(--bg-input)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '10px',
+              color: 'var(--bg-primary)',
+              fontWeight: 'bold',
+              marginTop: '1px',
+              transition: 'all 200ms ease',
+              flexShrink: 0,
+            }}
+          >
+            {task.completed ? '✓' : ''}
+          </div>
+
+          {confirmComplete && (
+            <div className="confirm-complete-popover" onClick={(e) => e.stopPropagation()}>
+              <span>Mark done?</span>
+              <button
+                className="btn btn-primary"
+                style={{ padding: '2px 7px', fontSize: '10px' }}
+                onClick={handleCheckboxClick}
+              >
+                YES
+              </button>
+              <button
+                className="btn btn-ghost"
+                style={{ padding: '2px 7px', fontSize: '10px' }}
+                onClick={() => setConfirmComplete(false)}
+              >
+                CANCEL
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Title + badges */}

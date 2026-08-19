@@ -250,6 +250,17 @@ export default function App() {
         </div>
       </main>
 
+      {/* Floating add-task button — primary "add" affordance on mobile,
+          where the N keyboard shortcut isn't available */}
+      <button
+        className="mobile-fab"
+        onClick={() => setShowNewTaskModal(true)}
+        aria-label="Add new task"
+        title="Add new task (N)"
+      >
+        +
+      </button>
+
       {/* Global new task modal */}
       {showNewTaskModal && (
         <TaskModal

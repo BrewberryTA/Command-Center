@@ -173,6 +173,8 @@ export function Dashboard({
     return <div>{[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}</div>;
   }
 
+  const gcalEventCount = relevantGCalEvents.filter(e => !gcalCompletions[e.id]).length;
+
   return (
     <div>
       {/* Export */}
@@ -180,75 +182,91 @@ export function Dashboard({
         <button className="btn btn-ghost" onClick={handleExportPDF}>📄 EXPORT TO PDF</button>
       </div>
 
-      {/* Rolled Over */}
-      {rolledOver.length > 0 && (
-        <section style={{ marginBottom: '24px' }}>
-          <SectionHeader title="↩ Rolled Over" color="var(--amber)" count={rolledOver.length} />
-          {rolledOver.map((task) => <TaskCard {...taskCardProps(task)} />)}
-        </section>
-      )}
+      {/* Swipe hint — only shown on narrow screens via CSS */}
+      <div className="dashboard-swipe-hint">
+        <span>← swipe between Tasks / Recurring / Calendar →</span>
+      </div>
 
-      {/* Open Tasks */}
-      <section style={{ marginBottom: '24px' }}>
-        <SectionHeader title="Open Tasks" count={open.length} />
-        {open.length === 0
-          ? <EmptySection message="No open tasks today" />
-          : sortByPriority(open).map((task) => <TaskCard {...taskCardProps(task)} />)
-        }
-      </section>
+      <div className="dashboard-columns">
+        {/* Column 1 — Tasks (Rolled Over + Open) */}
+        <div className="dashboard-column">
+          <div className="dashboard-column-title">Tasks</div>
 
-      {/* Calendar Events */}
-      <section style={{ marginBottom: '24px' }}>
-        <SectionHeader
-          title="Calendar Events"
-          color="var(--accent)"
-          count={events.length + relevantGCalEvents.filter(e => !gcalCompletions[e.id]).length}
-        />
-        {events.length === 0 && relevantGCalEvents.length === 0 ? (
-          <EmptySection message="No events scheduled today" />
-        ) : (
-          <>
-            {sortByTime(events).map((task) => <TaskCard {...taskCardProps(task)} />)}
-            {relevantGCalEvents
-              .filter((evt) => !gcalCompletions[evt.id])
-              .map((evt) => (
-                <GCalEventCard
-                  key={`${evt._accountEmail}__${evt.id}`}
-                  evt={evt}
-                  isComplete={false}
-                  onToggle={onGCalToggle}
-                />
-              ))}
-          </>
-        )}
-      </section>
+          {rolledOver.length > 0 && (
+            <section style={{ marginBottom: '24px' }}>
+              <SectionHeader title="↩ Rolled Over" color="var(--amber)" count={rolledOver.length} />
+              {rolledOver.map((task) => <TaskCard {...taskCardProps(task)} />)}
+            </section>
+          )}
 
-      {/* Daily Items */}
-      <section style={{ marginBottom: '24px' }}>
-        <SectionHeader title="Daily Items" color="var(--green)" count={daily.length} />
-        {daily.length === 0
-          ? <EmptySection message="No daily items configured — add them in the Tasks tab" />
-          : daily.map((task) => <TaskCard {...taskCardProps(task)} />)
-        }
-      </section>
+          <section style={{ marginBottom: '24px' }}>
+            <SectionHeader title="Open Tasks" count={open.length} />
+            {open.length === 0
+              ? <EmptySection message="No open tasks today" />
+              : sortByPriority(open).map((task) => <TaskCard {...taskCardProps(task)} />)
+            }
+          </section>
+        </div>
 
-      {/* Weekly Items */}
-      <section style={{ marginBottom: '24px' }}>
-        <SectionHeader title="Weekly Items" color="var(--accent-2)" count={weekly.length} />
-        {weekly.length === 0
-          ? <EmptySection message="No weekly items for today — add them in the Tasks tab" />
-          : weekly.map((task) => <TaskCard {...taskCardProps(task)} />)
-        }
-      </section>
+        {/* Column 2 — Recurring (Daily / Weekly / Monthly) */}
+        <div className="dashboard-column">
+          <div className="dashboard-column-title">Recurring</div>
 
-      {/* Monthly Items */}
-      <section style={{ marginBottom: '24px' }}>
-        <SectionHeader title="Monthly Items" color="var(--amber)" count={monthly.length} />
-        {monthly.length === 0
-          ? <EmptySection message="No monthly items for today — add them in the Tasks tab" />
-          : monthly.map((task) => <TaskCard {...taskCardProps(task)} />)
-        }
-      </section>
+          <section style={{ marginBottom: '24px' }}>
+            <SectionHeader title="Daily Items" color="var(--green)" count={daily.length} />
+            {daily.length === 0
+              ? <EmptySection message="No daily items configured — add them in the Tasks tab" />
+              : daily.map((task) => <TaskCard {...taskCardProps(task)} />)
+            }
+          </section>
+
+          <section style={{ marginBottom: '24px' }}>
+            <SectionHeader title="Weekly Items" color="var(--accent-2)" count={weekly.length} />
+            {weekly.length === 0
+              ? <EmptySection message="No weekly items for today — add them in the Tasks tab" />
+              : weekly.map((task) => <TaskCard {...taskCardProps(task)} />)
+            }
+          </section>
+
+          <section style={{ marginBottom: '24px' }}>
+            <SectionHeader title="Monthly Items" color="var(--amber)" count={monthly.length} />
+            {monthly.length === 0
+              ? <EmptySection message="No monthly items for today — add them in the Tasks tab" />
+              : monthly.map((task) => <TaskCard {...taskCardProps(task)} />)
+            }
+          </section>
+        </div>
+
+        {/* Column 3 — Calendar Events */}
+        <div className="dashboard-column">
+          <div className="dashboard-column-title">Calendar</div>
+
+          <section style={{ marginBottom: '24px' }}>
+            <SectionHeader
+              title="Calendar Events"
+              color="var(--accent)"
+              count={events.length + gcalEventCount}
+            />
+            {events.length === 0 && relevantGCalEvents.length === 0 ? (
+              <EmptySection message="No events scheduled today" />
+            ) : (
+              <>
+                {sortByTime(events).map((task) => <TaskCard {...taskCardProps(task)} />)}
+                {relevantGCalEvents
+                  .filter((evt) => !gcalCompletions[evt.id])
+                  .map((evt) => (
+                    <GCalEventCard
+                      key={`${evt._accountEmail}__${evt.id}`}
+                      evt={evt}
+                      isComplete={false}
+                      onToggle={onGCalToggle}
+                    />
+                  ))}
+              </>
+            )}
+          </section>
+        </div>
+      </div>
     </div>
   );
 }
