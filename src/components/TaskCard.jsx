@@ -33,6 +33,31 @@ function formatDuration(min) {
   return `${h}h ${m}m`;
 }
 
+// How long a task has been sitting on the board, based on createdAt.
+// Compares calendar days (not raw ms/24h) so a task added yesterday afternoon
+// correctly reads "1 day" this morning instead of "0 days".
+function formatAge(createdAt) {
+  if (!createdAt) return null;
+  const d = createdAt instanceof Date ? createdAt : new Date(createdAt);
+  if (isNaN(d.getTime())) return null;
+
+  const startOfDay = (dt) => {
+    const x = new Date(dt);
+    x.setHours(0, 0, 0, 0);
+    return x;
+  };
+
+  const days = Math.round((startOfDay(new Date()) - startOfDay(d)) / 86400000);
+
+  if (days <= 0) return 'Today';
+  if (days === 1) return '1 day';
+  if (days < 30) return `${days} days`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return months === 1 ? '1 mo' : `${months} mo`;
+  const years = Math.floor(months / 12);
+  return years === 1 ? '1 yr' : `${years} yr`;
+}
+
 export function TaskCard({
   task,
   uid,
@@ -88,6 +113,13 @@ export function TaskCard({
 
   const noteCount = task.notes?.length || 0;
   const attachCount = task.attachments?.length || 0;
+  const age = formatAge(task.createdAt);
+  const ageIsStale = (() => {
+    if (!task.createdAt) return false;
+    const d = task.createdAt instanceof Date ? task.createdAt : new Date(task.createdAt);
+    if (isNaN(d.getTime())) return false;
+    return (new Date() - d) / 86400000 >= 14; // flag anything 2+ weeks old
+  })();
 
   return (
     <div
@@ -203,6 +235,22 @@ export function TaskCard({
             >
               ⏱ {formatDuration(task.duration)}
             </span>
+            {age && !task.completed && (
+              <span
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '10px',
+                  color: ageIsStale ? 'var(--red, #ff5c5c)' : 'var(--text-muted)',
+                }}
+                title={
+                  task.createdAt
+                    ? `Added ${(task.createdAt instanceof Date ? task.createdAt : new Date(task.createdAt)).toLocaleDateString()}`
+                    : undefined
+                }
+              >
+                📌 {age} on board
+              </span>
+            )}
             {task.dueDate && task.type === 'event' && (
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-secondary)' }}>
                 @ {formatTime(task.dueDate)}
@@ -300,6 +348,20 @@ export function TaskCard({
                 </div>
               )}
             </div>
+
+            {/* On board since (read-only) */}
+            {task.createdAt && (
+              <div>
+                <label>On Board Since</label>
+                <div
+                  style={{ padding: '8px 0', color: 'var(--text-secondary)', fontSize: '13px', fontFamily: 'var(--font-mono)' }}
+                >
+                  {(task.createdAt instanceof Date ? task.createdAt : new Date(task.createdAt)).toLocaleDateString()}
+                  {' '}
+                  <span style={{ color: 'var(--text-muted)' }}>({age})</span>
+                </div>
+              </div>
+            )}
 
             {/* Priority (open tasks) */}
             {task.type === 'open' && (
