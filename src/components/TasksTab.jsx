@@ -7,7 +7,16 @@ const TYPE_OPTIONS = ['all', 'open', 'event', 'daily', 'weekly', 'monthly'];
 const PRIORITY_OPTIONS = ['all', 'High', 'Med', 'Low'];
 const STATUS_OPTIONS = ['all', 'Working on it', 'No progress', 'Stuck'];
 const COMPLETION_OPTIONS = ['all', 'incomplete', 'complete'];
-const SORT_OPTIONS = ['priority', 'date', 'type', 'title', 'age'];
+
+// Sort dropdown uses explicit {value,label} pairs so it reads clearly instead
+// of printing raw internal keys like "age" or "date".
+const SORT_OPTIONS = [
+  { value: 'dueDate', label: 'Due Date' },
+  { value: 'dateAdded', label: 'Date Added (Oldest First)' },
+  { value: 'priority', label: 'Priority (High First)' },
+  { value: 'type', label: 'Type' },
+  { value: 'title', label: 'Title (A–Z)' },
+];
 
 function FilterChip({ label, value, options, onChange }) {
   return (
@@ -22,6 +31,28 @@ function FilterChip({ label, value, options, onChange }) {
         {options.map((o) => (
           <option key={o} value={o}>
             {o === 'all' ? `All ${label}` : o}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+// Like FilterChip, but for option lists that need a display label distinct
+// from their internal value (e.g. sort keys).
+function LabeledSelect({ label, value, options, onChange }) {
+  return (
+    <div>
+      <label>{label}</label>
+      <select
+        className="input"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        style={{ minWidth: '170px' }}
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
           </option>
         ))}
       </select>
@@ -52,7 +83,7 @@ export function TasksTab({
   const [filterPriority, setFilterPriority] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterCompletion, setFilterCompletion] = useState('incomplete');
-  const [sortBy, setSortBy] = useState('date');
+  const [sortBy, setSortBy] = useState('dueDate');
 
   const filtered = useMemo(() => {
     let list = [...tasks];
@@ -68,14 +99,14 @@ export function TasksTab({
     const TYPE_ORDER = { open: 0, event: 1, daily: 2, weekly: 3, monthly: 4 };
     list.sort((a, b) => {
       if (sortBy === 'priority') return (PRIORITY_ORDER[a.priority] ?? 3) - (PRIORITY_ORDER[b.priority] ?? 3);
-      if (sortBy === 'date') {
+      if (sortBy === 'dueDate') {
         const da = a.dueDate ? new Date(a.dueDate) : new Date(8640000000000000);
         const db = b.dueDate ? new Date(b.dueDate) : new Date(8640000000000000);
         return da - db;
       }
       if (sortBy === 'type') return (TYPE_ORDER[a.type] ?? 9) - (TYPE_ORDER[b.type] ?? 9);
       if (sortBy === 'title') return a.title.localeCompare(b.title);
-      if (sortBy === 'age') {
+      if (sortBy === 'dateAdded') {
         // Oldest createdAt first — surfaces tasks that have been sitting longest.
         const ca = a.createdAt ? new Date(a.createdAt) : new Date(8640000000000000);
         const cb = b.createdAt ? new Date(b.createdAt) : new Date(8640000000000000);
@@ -112,7 +143,7 @@ export function TasksTab({
         <FilterChip label="Priority" value={filterPriority} options={PRIORITY_OPTIONS} onChange={setFilterPriority} />
         <FilterChip label="Status" value={filterStatus} options={STATUS_OPTIONS} onChange={setFilterStatus} />
         <FilterChip label="Completion" value={filterCompletion} options={COMPLETION_OPTIONS} onChange={setFilterCompletion} />
-        <FilterChip label="Sort By" value={sortBy} options={SORT_OPTIONS} onChange={setSortBy} />
+        <LabeledSelect label="Sort By" value={sortBy} options={SORT_OPTIONS} onChange={setSortBy} />
 
         <div style={{ marginLeft: 'auto', alignSelf: 'flex-end' }}>
           <button
