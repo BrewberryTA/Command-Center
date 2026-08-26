@@ -1,4 +1,5 @@
 // src/components/Dashboard.jsx
+import { useState } from 'react';
 import { TaskCard } from './TaskCard.jsx';
 import { exportTodayToPDF } from '../lib/pdfExport.js';
 import { ClaudeAssist } from './ClaudeAssist.jsx';
@@ -117,6 +118,11 @@ export function Dashboard({
 }) {
   const { open = [], events = [], daily = [], weekly = [], monthly = [], rolledOver = [] } = todayTasks || {};
 
+  // Controls how the Open Tasks / Rolled Over lists in the Tasks column are ordered.
+  // 'priority': High -> Med -> Low (previous fixed behavior)
+  // 'dateAdded': oldest createdAt first — surfaces tasks that have been sitting longest
+  const [taskSort, setTaskSort] = useState('priority');
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
@@ -144,6 +150,14 @@ export function Dashboard({
     return [...tasks].sort((a, b) => (order[a.priority] ?? 1) - (order[b.priority] ?? 1));
   };
 
+  const sortByDateAdded = (tasks) => {
+    return [...tasks].sort((a, b) => {
+      const ca = a.createdAt ? new Date(a.createdAt) : new Date(8640000000000000);
+      const cb = b.createdAt ? new Date(b.createdAt) : new Date(8640000000000000);
+      return ca - cb;
+    });
+  };
+
   const sortByTime = (tasks) => {
     return [...tasks].sort((a, b) => {
       if (!a.dueDate) return 1;
@@ -151,6 +165,9 @@ export function Dashboard({
       return new Date(a.dueDate) - new Date(b.dueDate);
     });
   };
+
+  // Applies whichever sort mode is currently selected for the Tasks column
+  const sortTasksColumn = (tasks) => (taskSort === 'dateAdded' ? sortByDateAdded(tasks) : sortByPriority(tasks));
 
   const handleExportPDF = async () => {
     try {
@@ -190,12 +207,34 @@ export function Dashboard({
       <div className="dashboard-columns">
         {/* Column 1 — Tasks (Rolled Over + Open) */}
         <div className="dashboard-column">
-          <div className="dashboard-column-title">Tasks</div>
+          <div
+            className="dashboard-column-title"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}
+          >
+            <span>Tasks</span>
+            <select
+              className="input"
+              value={taskSort}
+              onChange={(e) => setTaskSort(e.target.value)}
+              title="Sort Open Tasks & Rolled Over"
+              style={{
+                fontSize: '10px',
+                padding: '3px 6px',
+                minWidth: 0,
+                width: 'auto',
+                fontFamily: 'var(--font-mono)',
+                textTransform: 'none',
+              }}
+            >
+              <option value="priority">Sort: Priority</option>
+              <option value="dateAdded">Sort: Date Added</option>
+            </select>
+          </div>
 
           {rolledOver.length > 0 && (
             <section style={{ marginBottom: '24px' }}>
               <SectionHeader title="↩ Rolled Over" color="var(--amber)" count={rolledOver.length} />
-              {rolledOver.map((task) => <TaskCard {...taskCardProps(task)} />)}
+              {sortTasksColumn(rolledOver).map((task) => <TaskCard {...taskCardProps(task)} />)}
             </section>
           )}
 
@@ -203,7 +242,7 @@ export function Dashboard({
             <SectionHeader title="Open Tasks" count={open.length} />
             {open.length === 0
               ? <EmptySection message="No open tasks today" />
-              : sortByPriority(open).map((task) => <TaskCard {...taskCardProps(task)} />)
+              : sortTasksColumn(open).map((task) => <TaskCard {...taskCardProps(task)} />)
             }
           </section>
         </div>
