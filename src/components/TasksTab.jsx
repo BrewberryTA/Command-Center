@@ -7,7 +7,7 @@ const TYPE_OPTIONS = ['all', 'open', 'event', 'daily', 'weekly', 'monthly'];
 const PRIORITY_OPTIONS = ['all', 'High', 'Med', 'Low'];
 const STATUS_OPTIONS = ['all', 'Working on it', 'No progress', 'Stuck'];
 const COMPLETION_OPTIONS = ['all', 'incomplete', 'complete'];
-const SORT_OPTIONS = ['priority', 'date', 'type', 'title'];
+const SORT_OPTIONS = ['priority', 'date', 'type', 'title', 'age'];
 
 function FilterChip({ label, value, options, onChange }) {
   return (
@@ -75,6 +75,12 @@ export function TasksTab({
       }
       if (sortBy === 'type') return (TYPE_ORDER[a.type] ?? 9) - (TYPE_ORDER[b.type] ?? 9);
       if (sortBy === 'title') return a.title.localeCompare(b.title);
+      if (sortBy === 'age') {
+        // Oldest createdAt first — surfaces tasks that have been sitting longest.
+        const ca = a.createdAt ? new Date(a.createdAt) : new Date(8640000000000000);
+        const cb = b.createdAt ? new Date(b.createdAt) : new Date(8640000000000000);
+        return ca - cb;
+      }
       return 0;
     });
 
