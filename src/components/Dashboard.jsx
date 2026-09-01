@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { TaskCard } from './TaskCard.jsx';
 import { exportTodayToPDF } from '../lib/pdfExport.js';
 import { ClaudeAssist } from './ClaudeAssist.jsx';
+import { BriefMe } from './BriefMe.jsx';
 
 function SectionHeader({ title, color, count }) {
   return (
@@ -104,6 +105,7 @@ function GCalEventCard({ evt, isComplete, onToggle }) {
 
 export function Dashboard({
   todayTasks,
+  allTasks = [],
   calendarEvents = [],
   gcalCompletions = {},
   onGCalToggle,
@@ -194,9 +196,10 @@ export function Dashboard({
 
   return (
     <div>
-      {/* Export */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
+      {/* Actions */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
         <button className="btn btn-ghost" onClick={handleExportPDF}>📄 EXPORT TO PDF</button>
+        <BriefMe allTasks={allTasks} todayTasks={todayTasks} calendarEvents={calendarEvents} />
       </div>
 
       {/* Swipe hint — only shown on narrow screens via CSS */}
