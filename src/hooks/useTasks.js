@@ -2,7 +2,7 @@
 // Manages all task CRUD operations against Firestore.
 // Uses real-time onSnapshot for live updates.
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   collection,
   onSnapshot,
@@ -22,9 +22,14 @@ export function useTasks(uid) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Mirror of the latest tasks array, readable inside callbacks without
+  // adding `tasks` to their dependency lists (keeps callback identity stable).
+  const tasksCacheRef = useRef([]);
+
   useEffect(() => {
     if (!uid) {
       setTasks([]);
+      tasksCacheRef.current = [];
       setLoading(false);
       return;
     }
@@ -42,11 +47,16 @@ export function useTasks(uid) {
           dueDate: d.data().dueDate?.toDate?.() || null,
           createdAt: d.data().createdAt?.toDate?.() || null,
           completedDate: d.data().completedDate?.toDate?.() || null,
+          // Activity timestamps — null on tasks created before this feature shipped
+          lastTouchedAt: d.data().lastTouchedAt?.toDate?.() || null,
+          statusChangedAt: d.data().statusChangedAt?.toDate?.() || null,
+          priorityChangedAt: d.data().priorityChangedAt?.toDate?.() || null,
           notes: (d.data().notes || []).map((n) => ({
             ...n,
             timestamp: n.timestamp?.toDate?.() || new Date(),
           })),
         }));
+        tasksCacheRef.current = items;
         setTasks(items);
         setLoading(false);
       },
@@ -65,6 +75,7 @@ export function useTasks(uid) {
     async (taskData) => {
       if (!uid) return;
       const tasksRef = collection(db, 'users', uid, 'tasks');
+      const createdStamp = Timestamp.now();
       const newTask = {
         title: '',
         type: 'open',
@@ -80,13 +91,18 @@ export function useTasks(uid) {
         completedDate: null,
         notes: [],
         attachments: [],
-        createdAt: Timestamp.now(),
+        createdAt: createdStamp,
         rolledOver: false,
         ...taskData,
         // Ensure dueDate is a Timestamp if provided as Date
         dueDate: taskData.dueDate
           ? Timestamp.fromDate(new Date(taskData.dueDate))
           : Timestamp.fromDate(new Date()),
+        // Activity timestamps always start at creation time — not overridable
+        // by taskData, so they can never be spoofed by a caller.
+        lastTouchedAt: createdStamp,
+        statusChangedAt: createdStamp,
+        priorityChangedAt: createdStamp,
       };
       try {
         const docRef = await addDoc(tasksRef, newTask);
@@ -100,6 +116,9 @@ export function useTasks(uid) {
   );
 
   // ── UPDATE ────────────────────────────────────────────────
+  // Every manual edit stamps lastTouchedAt. status/priority get their own
+  // stamps ONLY when the value genuinely changes — re-saving a task with the
+  // same status must not reset its staleness clock.
   const updateTask = useCallback(
     async (taskId, updates) => {
       if (!uid) return;
@@ -112,6 +131,21 @@ export function useTasks(uid) {
       if (sanitized.completedDate instanceof Date) {
         sanitized.completedDate = Timestamp.fromDate(sanitized.completedDate);
       }
+
+      const now = Timestamp.now();
+      const prev = tasksCacheRef.current.find((t) => t.id === taskId);
+
+      sanitized.lastTouchedAt = now;
+
+      const has = (k) => Object.prototype.hasOwnProperty.call(sanitized, k);
+
+      if (has('status') && (!prev || prev.status !== sanitized.status)) {
+        sanitized.statusChangedAt = now;
+      }
+      if (has('priority') && (!prev || prev.priority !== sanitized.priority)) {
+        sanitized.priorityChangedAt = now;
+      }
+
       try {
         await updateDoc(taskRef, sanitized);
       } catch (err) {
@@ -156,6 +190,8 @@ export function useTasks(uid) {
       try {
         await updateDoc(taskRef, {
           notes: [...existingNotes, newNote],
+          // Writing a note is real engagement — counts as touching the task
+          lastTouchedAt: Timestamp.now(),
         });
       } catch (err) {
         setError(err.message);
@@ -175,6 +211,7 @@ export function useTasks(uid) {
       try {
         await updateDoc(taskRef, {
           attachments: [...existing, attachment],
+          lastTouchedAt: Timestamp.now(),
         });
       } catch (err) {
         setError(err.message);
