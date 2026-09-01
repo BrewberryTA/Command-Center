@@ -17,7 +17,7 @@ import { useTools } from './hooks/useTools.js';
 import { useCalendar } from './hooks/useCalendar.js';
 import { runRollForward, resetDailyTasks } from './lib/rollForward.js';
 
-// ── Login Screen ───────────────────────────────────────────────
+// ── Login Screen ─────────────────────────────────────────────
 function LoginScreen({ onSignIn, error, loading }) {
   return (
     <div style={{
@@ -94,7 +94,7 @@ function LoginScreen({ onSignIn, error, loading }) {
   );
 }
 
-// ── Main App ───────────────────────────────────────────────────
+// ── Main App ──────────────────────────────────────────────────
 export default function App() {
   const { user, loading: authLoading, error: authError, signIn, signOut, accessToken } = useAuth();
   const [activeTab, setActiveTab] = useState('Dashboard');
@@ -204,7 +204,7 @@ export default function App() {
 
           {/* Tab content */}
           {activeTab === 'Dashboard' && (
-            <Dashboard todayTasks={todayTasks} calendarEvents={calEvents}
+            <Dashboard todayTasks={todayTasks} allTasks={tasks} calendarEvents={calEvents}
               gcalCompletions={gcalCompletions}
               onGCalToggle={toggleGCalComplete}
               loading={tasksLoading} uid={uid}
