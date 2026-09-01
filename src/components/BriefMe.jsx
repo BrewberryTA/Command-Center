@@ -220,6 +220,36 @@ export function buildBrief({ allTasks = [], todayTasks = {}, calendarEvents = []
 
 // ── Component ─────────────────────────────────────────────────
 
+// Synchronous clipboard write. Must run BEFORE window.open() — opening a tab
+// removes focus from this document, and navigator.clipboard.writeText refuses
+// to run on an unfocused document. execCommand is deprecated but it is
+// synchronous and has no focus requirement, which is exactly what we need here.
+function copySync(text) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.top = '0';
+    ta.style.left = '0';
+    ta.style.width = '1px';
+    ta.style.height = '1px';
+    ta.style.padding = '0';
+    ta.style.border = 'none';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    ta.setSelectionRange(0, text.length);
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  } catch (err) {
+    console.error('[BriefMe] copySync failed:', err);
+    return false;
+  }
+}
+
 export function BriefMe({ allTasks = [], todayTasks = {}, calendarEvents = [] }) {
   const [state, setState] = useState('idle'); // idle | copied | failed
   const [fallbackText, setFallbackText] = useState('');
@@ -230,27 +260,27 @@ export function BriefMe({ allTasks = [], todayTasks = {}, calendarEvents = [] })
       text = buildBrief({ allTasks, todayTasks, calendarEvents });
     } catch (err) {
       console.error('[BriefMe] Failed to build brief:', err);
-      setState('failed');
       setFallbackText('Could not assemble the brief. Check the browser console.');
+      setState('failed');
       return;
     }
 
-    // Open synchronously inside the click handler so popup blockers allow it
-    window.open('https://claude.ai/new', '_blank', 'noopener');
+    // 1. Copy first, while this tab still has focus.
+    const ok = copySync(text);
 
+    // 2. Belt and braces — also try the modern API. Harmless if it fails.
     if (navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(text).then(
-        () => {
-          setState('copied');
-          setTimeout(() => setState('idle'), 6000);
-        },
-        (err) => {
-          console.error('[BriefMe] Clipboard write failed:', err);
-          setFallbackText(text);
-          setState('failed');
-        }
-      );
+      navigator.clipboard.writeText(text).catch(() => {});
+    }
+
+    if (ok) {
+      setState('copied');
+      // 3. Only open Claude once we know the text is on the clipboard.
+      window.open('https://claude.ai/new', '_blank', 'noopener');
+      setTimeout(() => setState('idle'), 15000);
     } else {
+      // Copy failed — stay on this tab so the manual fallback is visible
+      // instead of hiding behind a tab the user was just sent to.
       setFallbackText(text);
       setState('failed');
     }
@@ -287,7 +317,7 @@ export function BriefMe({ allTasks = [], todayTasks = {}, calendarEvents = [] })
       {state === 'failed' && (
         <div style={{ width: '100%', maxWidth: '520px' }}>
           <div style={{ fontSize: '11px', color: 'var(--amber, #b45309)', marginBottom: '4px' }}>
-            Clipboard blocked — select all below and copy manually:
+            Clipboard blocked — select all below, copy, then open Claude:
           </div>
           <textarea
             readOnly
@@ -303,15 +333,25 @@ export function BriefMe({ allTasks = [], todayTasks = {}, calendarEvents = [] })
               padding: '6px',
             }}
           />
-          <button
-            onClick={() => { setState('idle'); setFallbackText(''); }}
-            style={{
-              background: 'none', border: 'none', color: '#9ca3af',
-              fontSize: '11px', cursor: 'pointer', marginTop: '2px',
-            }}
-          >
-            dismiss
-          </button>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '2px' }}>
+            <a
+              href="https://claude.ai/new"
+              target="_blank"
+              rel="noreferrer"
+              style={{ fontSize: '11px', color: '#7c3aed', fontWeight: 600 }}
+            >
+              open claude.ai →
+            </a>
+            <button
+              onClick={() => { setState('idle'); setFallbackText(''); }}
+              style={{
+                background: 'none', border: 'none', color: '#9ca3af',
+                fontSize: '11px', cursor: 'pointer',
+              }}
+            >
+              dismiss
+            </button>
+          </div>
         </div>
       )}
     </div>
