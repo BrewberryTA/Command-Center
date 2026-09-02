@@ -6,49 +6,93 @@ import { useState } from 'react';
 
 // ── The prompt ────────────────────────────────────────────────
 // Edit this block to change what the brief asks for.
-const BRIEF_PROMPT = `You have my full Command Center dump below: open tasks with priority,
-status, days on board, days since last edit, days since last status change,
-notes, today's calendar, and today's food log.
+const BRIEF_PROMPT = `You have my full Command Center dump below: every open task with priority,
+status, days on board, activity timestamps, notes, today's calendar, and my
+food log.
 
-Your job is to get me moving, not to summarize my list back to me. I can
-already see my list.
+Do TWO things, in this order.
 
-1. THE ORDER
-Give me a specific sequence for today, not a ranked list of importance.
-Actual order of operations: what I open first, what comes after it, what
-waits until afternoon. Account for meetings already on the calendar, and
-put anything requiring real focus before the first one. Estimate how far
-down the list I'll realistically get. If the day doesn't fit, say which
-items fall off rather than pretending they compress.
+═══════════════════════════════════════════════════════════════
+PART 1 — THE BRIEF (in chat, short)
+═══════════════════════════════════════════════════════════════
 
-2. NOISE OR SIGNAL
-For every task where priority AND status have gone unchanged for 5+ days,
-ask me directly: is this noise or signal? Then take a position. If it's
-been sitting untouched at Med with no notes for two weeks, it's noise and
-you should tell me to delete it. If it's High and Stuck and I keep not
-touching it, that's avoidance and you should name it. Don't hedge with
-"you may want to consider." Pick one: do it today, hand it off, schedule
-it with a real date, or kill it.
+A. THE ORDER
+A specific sequence for today, not a ranked list of importance. What I open
+first, what comes after it, what waits until afternoon. Work around meetings
+already on the calendar and put anything needing real focus before the first
+one. Estimate how far down I'll realistically get. If the day doesn't fit,
+name what falls off instead of pretending it compresses.
 
-3. THE ONE I'M AVOIDING
-Identify the single task I'm most likely dodging. Stuck longer than the
-others, high priority, low activity, or notes that read like excuses. Say
-what you think the actual blocker is, and give me the smallest possible
-first action — something under fifteen minutes that breaks the seal.
+B. THE ONE I'M AVOIDING
+The single task I'm most likely dodging. Say what you think the real blocker
+is and give me one action under fifteen minutes that breaks the seal.
 
-4. WHAT I'M NOT SEEING
-Anything the list itself reveals: work I'm generating faster than
-finishing, a category piling up, a pattern across dates.
+C. WHAT I'M NOT SEEING
+Any pattern the board reveals: work I'm generating faster than closing, a
+category piling up, several items stalled on the same missing thing.
 
-RULES
-Be blunt. Skip preamble and encouragement. No "great job staying
-organized." If my board is a mess, say so. If I'm busy but not productive,
-say that. Cite specific task titles and day counts — never speak in
-generalities. Keep the whole thing short enough to read standing up.
+Keep Part 1 short enough to read standing up. Be blunt, skip encouragement,
+cite specific task titles and day counts.
 
-NOTE ON DATA: activity tracking started 2026-09-01. Any task showing
-"not tracked yet" for last-edit or status-change simply predates that,
-so treat it as unknown rather than stale.
+═══════════════════════════════════════════════════════════════
+PART 2 — THE FULL BOARD REVIEW (as a printable artifact)
+═══════════════════════════════════════════════════════════════
+
+Produce this as a downloadable/printable artifact, not as chat text.
+
+COVERAGE IS MANDATORY AND IS THE POINT OF PART 2.
+Before you write anything, count every open item in the dump — rolled over,
+due today, events, recurring, and the entire backlog. State that number at
+the top of the document. Every single one of those items must appear below.
+Do not summarize, do not sample, do not drop an item because it looks
+routine or low priority. If the count of rows in your document does not
+match the count you stated, you have made an error — go back and add the
+missing ones.
+
+For EVERY open item, give me a row with:
+
+  ITEM          — the task title, exactly as written
+  STATUS        — priority, status, days on board
+  BLOCKER       — what is actually stopping this from progressing
+  NEEDS         — the specific next deliverable required to move it
+  ACTION        — the single next step, phrased as an instruction
+  WAITING ON    — me, or a named third party, or unknown
+
+READ EVERY NOTE ON EVERY TASK, not just the newest one. Notes are where the
+real blockers live and they are the highest-value field in this dump.
+
+CRITICAL: when a note names a required document, study, permit, inspection,
+certificate, report, approval, or signature, that IS the NEEDS value and you
+must surface it verbatim. Examples of the pattern I care about: a note
+reading "needs a cultural resource study done" means NEEDS = "Cultural
+Resource Study." A note reading "needs a final grading cert" means NEEDS =
+"Final Grading Certificate." These are exactly the items I keep losing track
+of, and missing one makes this whole document worthless to me.
+
+Never write "no blocker" or "none" for NEEDS unless the notes genuinely
+contain no requirement. If a task has no notes at all, write "unknown — no
+notes on file" rather than inventing something.
+
+After the full table, add two short sections:
+
+  STALLED — items where the notes show a requirement that has been sitting
+  unfilled. Order by days on board, longest first. For each, take a
+  position: do it today, hand it off, schedule it with a real date, or kill
+  it. Do not hedge with "you may want to consider."
+
+  OUTSTANDING DELIVERABLES — a plain checklist of every distinct document,
+  study, permit, certificate, or approval named anywhere in the notes, with
+  which item it belongs to. This is the list I want to work from.
+
+Format the artifact so it prints cleanly on paper: clear headings, real
+tables, no emoji, no decorative characters.
+
+═══════════════════════════════════════════════════════════════
+
+NOTE ON DATA: the activity timestamps (last edited, status changed, priority
+changed) only began recording on 2026-09-01. Anything reading "not tracked
+yet" predates that — treat it as unknown, not as stale, and lean on days on
+board and note dates instead when judging whether something has stalled.
 
 ────────────────────────────────────────────────────────────────
 `;
@@ -111,13 +155,20 @@ function describeTask(task) {
   ];
   bits.push(`    ${activity.join(' | ')}`);
 
+  // Send EVERY note, newest first. Blockers ("needs a cultural resource
+  // study", "needs a final grading cert") live in here and are the single
+  // highest-value field in the dump — sending only the latest one silently
+  // hides requirements logged earlier.
   const notes = task.notes || [];
   if (notes.length > 0) {
-    const last = notes[notes.length - 1];
-    const when = daysSince(last.timestamp);
-    const whenLabel = when === null ? '' : when === 0 ? 'today' : `${when}d ago`;
-    const text = (last.text || '').replace(/\s+/g, ' ').trim();
-    bits.push(`    notes: ${notes.length} | latest (${whenLabel}): "${text}"`);
+    bits.push(`    notes (${notes.length}, newest first):`);
+    [...notes].reverse().forEach((n) => {
+      const when = daysSince(n.timestamp);
+      const whenLabel = when === null ? 'undated' : when === 0 ? 'today' : `${when}d ago`;
+      let text = (n.text || '').replace(/\s+/g, ' ').trim();
+      if (text.length > 600) text = `${text.slice(0, 600)}…[truncated]`;
+      bits.push(`      · (${whenLabel}) ${text}`);
+    });
   } else {
     bits.push('    notes: none');
   }
@@ -171,6 +222,12 @@ export function buildBrief({ allTasks = [], todayTasks = {}, calendarEvents = []
   lines.push(`TIME OF REQUEST: ${fmtTime(now)}`);
   lines.push('');
 
+  // Explicit total so the model can verify its own coverage in Part 2
+  const openTotal = allTasks.filter((t) => !t.completed).length;
+  lines.push(`TOTAL OPEN ITEMS ON THE BOARD: ${openTotal}`);
+  lines.push('Every one of these must appear in the printable review.');
+  lines.push('');
+
   lines.push('══ TODAY ══');
   lines.push('');
   lines.push(section('ROLLED OVER (past due, still open)', rolledOver));
@@ -208,12 +265,8 @@ export function buildBrief({ allTasks = [], todayTasks = {}, calendarEvents = []
   lines.push('══ FOOD LOG TODAY ══');
   lines.push('not yet tracked — food panel not built\n');
 
-  const counts = {
-    openTotal: allTasks.filter((t) => !t.completed).length,
-    doneWeek: recentlyDone.length,
-  };
   lines.push('══ COUNTS ══');
-  lines.push(`open tasks total: ${counts.openTotal} | closed last 7 days: ${counts.doneWeek}`);
+  lines.push(`open tasks total: ${openTotal} | closed last 7 days: ${recentlyDone.length}`);
 
   return `${BRIEF_PROMPT}\n${lines.join('\n')}`;
 }
