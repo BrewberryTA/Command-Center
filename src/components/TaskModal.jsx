@@ -164,6 +164,7 @@ export function TaskModal({ onClose, onSave }) {
                   <option>Working on it</option>
                   <option>No progress</option>
                   <option>Stuck</option>
+                  <option>Done</option>
                 </select>
               </div>
             </div>
