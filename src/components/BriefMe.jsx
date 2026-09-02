@@ -4,8 +4,6 @@ import { useState } from 'react';
 // prepends a fixed prompt, copies it to the clipboard and opens claude.ai.
 // No API key, no cost — uses your existing Claude subscription.
 
-// ── The prompt ────────────────────────────────────────────────
-// Edit this block to change what the brief asks for.
 const BRIEF_PROMPT = `You have my full Command Center dump below: every open task with priority,
 status, days on board, activity timestamps, notes, today's calendar, and my
 food log.
@@ -22,6 +20,13 @@ first, what comes after it, what waits until afternoon. Work around meetings
 already on the calendar and put anything needing real focus before the first
 one. Estimate how far down I'll realistically get. If the day doesn't fit,
 name what falls off instead of pretending it compresses.
+
+SCOPE FOR THE ORDER: draw only from items that are OVERDUE, due today, due
+within about 7 days, or that you can tell are blocking something else on the
+board. An item due in 2+ months does NOT belong in today's sequence just
+because it has been sitting on the board a long time — age and urgency are
+different things. Everything else stays out of Part 1 and shows up in Part 2
+instead, where full coverage is the point.
 
 B. THE ONE I'M AVOIDING
 The single task I'm most likely dodging. Say what you think the real blocker
@@ -76,9 +81,11 @@ notes on file" rather than inventing something.
 After the full table, add two short sections:
 
   STALLED — items where the notes show a requirement that has been sitting
-  unfilled. Order by days on board, longest first. For each, take a
-  position: do it today, hand it off, schedule it with a real date, or kill
-  it. Do not hedge with "you may want to consider."
+  unfilled. Order by a mix of days on board AND due-date urgency, not age
+  alone — a task on the board 60 days but not due for 2 months is lower
+  priority than one on the board 10 days and due this week. For each, take
+  a position: do it today, hand it off, schedule it with a real date, or
+  kill it. Do not hedge with "you may want to consider."
 
   OUTSTANDING DELIVERABLES — a plain checklist of every distinct document,
   study, permit, certificate, or approval named anywhere in the notes, with
@@ -96,8 +103,6 @@ board and note dates instead when judging whether something has stalled.
 
 ────────────────────────────────────────────────────────────────
 `;
-
-// ── Helpers ───────────────────────────────────────────────────
 
 function daysSince(date) {
   if (!date) return null;
@@ -142,7 +147,18 @@ function describeTask(task) {
     `status: ${task.status || 'No progress'}`,
   ];
   if (task.duration) meta.push(`est: ${task.duration}m`);
-  if (task.dueDate) meta.push(`due: ${fmtDate(task.dueDate)}`);
+  if (task.dueDate) {
+    const dd = task.dueDate instanceof Date ? task.dueDate : new Date(task.dueDate);
+    const startOfDay = (x) => { const y = new Date(x); y.setHours(0, 0, 0, 0); return y; };
+    const diffDays = Math.round((startOfDay(dd) - startOfDay(new Date())) / 86400000);
+    const urgency = diffDays < 0 ? `OVERDUE by ${Math.abs(diffDays)}d`
+      : diffDays === 0 ? 'due today'
+      : diffDays === 1 ? 'due tomorrow'
+      : `due in ${diffDays}d`;
+    meta.push(`due: ${fmtDate(task.dueDate)} (${urgency})`);
+  } else {
+    meta.push('due: none');
+  }
   if (task.rolledOver) meta.push('ROLLED OVER');
   bits.push(`    ${meta.join(' | ')}`);
 
@@ -155,10 +171,6 @@ function describeTask(task) {
   ];
   bits.push(`    ${activity.join(' | ')}`);
 
-  // Send EVERY note, newest first. Blockers ("needs a cultural resource
-  // study", "needs a final grading cert") live in here and are the single
-  // highest-value field in the dump — sending only the latest one silently
-  // hides requirements logged earlier.
   const notes = task.notes || [];
   if (notes.length > 0) {
     bits.push(`    notes (${notes.length}, newest first):`);
@@ -181,8 +193,6 @@ function section(title, tasks) {
   return `${title} (${tasks.length}):\n${tasks.map(describeTask).join('\n')}\n`;
 }
 
-// ── Dump builder ──────────────────────────────────────────────
-
 export function buildBrief({ allTasks = [], todayTasks = {}, calendarEvents = [] }) {
   const now = new Date();
   const today = new Date();
@@ -190,14 +200,8 @@ export function buildBrief({ allTasks = [], todayTasks = {}, calendarEvents = []
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
-  // Tasks marked status "Done" are excluded from the dump entirely. Filtering
-  // here rather than telling the model to skip them means there is no chance
-  // of them leaking into the review — they are simply not in the paste.
   const isDone = (t) => t.status === 'Done';
 
-  // Also drop anything already ticked off. getTodaysTasks() filters the
-  // today-sections by date and type only, so completed items were still
-  // landing in the dump as if they were outstanding work.
   const live = (arr) => (arr || []).filter((t) => !isDone(t) && !t.completed);
 
   const open = live(todayTasks.open);
@@ -207,14 +211,12 @@ export function buildBrief({ allTasks = [], todayTasks = {}, calendarEvents = []
   const monthly = live(todayTasks.monthly);
   const rolledOver = live(todayTasks.rolledOver);
 
-  // IDs already shown in a today-section, so the backlog block doesn't repeat them
   const shown = new Set(
     [...open, ...events, ...daily, ...weekly, ...monthly, ...rolledOver].map((t) => t.id)
   );
 
   const backlog = allTasks.filter((t) => !t.completed && !isDone(t) && !shown.has(t.id));
 
-  // Completed in the last 7 days — shows momentum vs. what just sits
   const weekAgo = new Date(today);
   weekAgo.setDate(weekAgo.getDate() - 7);
   const recentlyDone = allTasks.filter(
@@ -235,7 +237,6 @@ export function buildBrief({ allTasks = [], todayTasks = {}, calendarEvents = []
   lines.push(`TIME OF REQUEST: ${fmtTime(now)}`);
   lines.push('');
 
-  // Explicit total so the model can verify its own coverage in Part 2
   const openTotal = allTasks.filter((t) => !t.completed && !isDone(t)).length;
   const doneCount = allTasks.filter((t) => !t.completed && isDone(t)).length;
   lines.push(`TOTAL OPEN ITEMS ON THE BOARD: ${openTotal}`);
@@ -288,12 +289,6 @@ export function buildBrief({ allTasks = [], todayTasks = {}, calendarEvents = []
   return `${BRIEF_PROMPT}\n${lines.join('\n')}`;
 }
 
-// ── Component ─────────────────────────────────────────────────
-
-// Synchronous clipboard write. Must run BEFORE window.open() — opening a tab
-// removes focus from this document, and navigator.clipboard.writeText refuses
-// to run on an unfocused document. execCommand is deprecated but it is
-// synchronous and has no focus requirement, which is exactly what we need here.
 function copySync(text) {
   try {
     const ta = document.createElement('textarea');
@@ -321,7 +316,7 @@ function copySync(text) {
 }
 
 export function BriefMe({ allTasks = [], todayTasks = {}, calendarEvents = [] }) {
-  const [state, setState] = useState('idle'); // idle | copied | failed
+  const [state, setState] = useState('idle');
   const [fallbackText, setFallbackText] = useState('');
 
   const handleClick = () => {
@@ -335,22 +330,17 @@ export function BriefMe({ allTasks = [], todayTasks = {}, calendarEvents = [] })
       return;
     }
 
-    // 1. Copy first, while this tab still has focus.
     const ok = copySync(text);
 
-    // 2. Belt and braces — also try the modern API. Harmless if it fails.
     if (navigator.clipboard?.writeText) {
       navigator.clipboard.writeText(text).catch(() => {});
     }
 
     if (ok) {
       setState('copied');
-      // 3. Only open Claude once we know the text is on the clipboard.
       window.open('https://claude.ai/new', '_blank', 'noopener');
       setTimeout(() => setState('idle'), 15000);
     } else {
-      // Copy failed — stay on this tab so the manual fallback is visible
-      // instead of hiding behind a tab the user was just sent to.
       setFallbackText(text);
       setState('failed');
     }

@@ -27,13 +27,11 @@ function SkeletonCard() {
   return <div className="skeleton" style={{ height: '62px', marginBottom: '8px', borderRadius: 'var(--radius)' }} />;
 }
 
-// GCal event card with checkbox
 function GCalEventCard({ evt, isComplete, onToggle }) {
   const time = evt.startDate
     ? new Date(evt.startDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
     : '';
 
-  // Is this from a past day?
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const evtDate = evt.startDate ? new Date(evt.startDate) : null;
@@ -54,7 +52,6 @@ function GCalEventCard({ evt, isComplete, onToggle }) {
       opacity: isComplete ? 0.6 : 1,
       transition: 'all 200ms ease',
     }}>
-      {/* Checkbox */}
       <div
         onClick={() => onToggle(evt.id, evt.title, isComplete)}
         style={{
@@ -71,7 +68,6 @@ function GCalEventCard({ evt, isComplete, onToggle }) {
         {isComplete ? '✓' : ''}
       </div>
 
-      {/* Content */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <span style={{
@@ -120,9 +116,6 @@ export function Dashboard({
 }) {
   const { open = [], events = [], daily = [], weekly = [], monthly = [], rolledOver = [] } = todayTasks || {};
 
-  // Controls how the Open Tasks / Rolled Over lists in the Tasks column are ordered.
-  // 'priority': High -> Med -> Low (previous fixed behavior)
-  // 'dateAdded': oldest createdAt first — surfaces tasks that have been sitting longest
   const [taskSort, setTaskSort] = useState('priority');
 
   const today = new Date();
@@ -130,8 +123,6 @@ export function Dashboard({
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
-  // Show today's events PLUS any incomplete events from past days
-  // Deduplicate — if the same event title appears at the same time from multiple accounts, show it once
   const seen = new Set();
   const relevantGCalEvents = calendarEvents.filter((e) => {
     if (!e.startDate) return false;
@@ -140,7 +131,6 @@ export function Dashboard({
     const isToday = d >= today && d < tomorrow;
     const isPastAndIncomplete = d < today && !gcalCompletions[e.id];
     if (!isToday && !isPastAndIncomplete) return false;
-    // Deduplicate by title + start time — same event from two accounts shows once
     const uniqueKey = `${e.title}__${d.toISOString()}`;
     if (seen.has(uniqueKey)) return false;
     seen.add(uniqueKey);
@@ -160,6 +150,18 @@ export function Dashboard({
     });
   };
 
+  // Open Tasks now includes future-dated and no-due-date items alongside
+  // today's, so a due-date sort is what actually surfaces "what's next"
+  // once today's list is cleared. No due date sorts to the end.
+  const sortByDueDate = (tasks) => {
+    const far = new Date(8640000000000000);
+    return [...tasks].sort((a, b) => {
+      const da = a.dueDate ? new Date(a.dueDate) : far;
+      const db = b.dueDate ? new Date(b.dueDate) : far;
+      return da - db;
+    });
+  };
+
   const sortByTime = (tasks) => {
     return [...tasks].sort((a, b) => {
       if (!a.dueDate) return 1;
@@ -168,8 +170,11 @@ export function Dashboard({
     });
   };
 
-  // Applies whichever sort mode is currently selected for the Tasks column
-  const sortTasksColumn = (tasks) => (taskSort === 'dateAdded' ? sortByDateAdded(tasks) : sortByPriority(tasks));
+  const sortTasksColumn = (tasks) => {
+    if (taskSort === 'dateAdded') return sortByDateAdded(tasks);
+    if (taskSort === 'dueDate') return sortByDueDate(tasks);
+    return sortByPriority(tasks);
+  };
 
   const handleExportPDF = async () => {
     try {
@@ -196,19 +201,16 @@ export function Dashboard({
 
   return (
     <div>
-      {/* Actions */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
         <button className="btn btn-ghost" onClick={handleExportPDF}>📄 EXPORT TO PDF</button>
         <BriefMe allTasks={allTasks} todayTasks={todayTasks} calendarEvents={calendarEvents} />
       </div>
 
-      {/* Swipe hint — only shown on narrow screens via CSS */}
       <div className="dashboard-swipe-hint">
         <span>← swipe between Tasks / Recurring / Calendar →</span>
       </div>
 
       <div className="dashboard-columns">
-        {/* Column 1 — Tasks (Rolled Over + Open) */}
         <div className="dashboard-column">
           <div
             className="dashboard-column-title"
@@ -230,6 +232,7 @@ export function Dashboard({
               }}
             >
               <option value="priority">Sort: Priority</option>
+              <option value="dueDate">Sort: Due Date</option>
               <option value="dateAdded">Sort: Date Added</option>
             </select>
           </div>
@@ -250,7 +253,6 @@ export function Dashboard({
           </section>
         </div>
 
-        {/* Column 2 — Recurring (Daily / Weekly / Monthly) */}
         <div className="dashboard-column">
           <div className="dashboard-column-title">Recurring</div>
 
@@ -279,7 +281,6 @@ export function Dashboard({
           </section>
         </div>
 
-        {/* Column 3 — Calendar Events */}
         <div className="dashboard-column">
           <div className="dashboard-column-title">Calendar</div>
 

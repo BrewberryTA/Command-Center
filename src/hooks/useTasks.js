@@ -22,8 +22,6 @@ export function useTasks(uid) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Mirror of the latest tasks array, readable inside callbacks without
-  // adding `tasks` to their dependency lists (keeps callback identity stable).
   const tasksCacheRef = useRef([]);
 
   useEffect(() => {
@@ -43,11 +41,9 @@ export function useTasks(uid) {
         const items = snapshot.docs.map((d) => ({
           id: d.id,
           ...d.data(),
-          // Convert Firestore Timestamps to JS Dates for convenience
           dueDate: d.data().dueDate?.toDate?.() || null,
           createdAt: d.data().createdAt?.toDate?.() || null,
           completedDate: d.data().completedDate?.toDate?.() || null,
-          // Activity timestamps — null on tasks created before this feature shipped
           lastTouchedAt: d.data().lastTouchedAt?.toDate?.() || null,
           statusChangedAt: d.data().statusChangedAt?.toDate?.() || null,
           priorityChangedAt: d.data().priorityChangedAt?.toDate?.() || null,
@@ -70,7 +66,6 @@ export function useTasks(uid) {
     return unsubscribe;
   }, [uid]);
 
-  // ── CREATE ────────────────────────────────────────────────
   const addTask = useCallback(
     async (taskData) => {
       if (!uid) return;
@@ -94,12 +89,9 @@ export function useTasks(uid) {
         createdAt: createdStamp,
         rolledOver: false,
         ...taskData,
-        // Ensure dueDate is a Timestamp if provided as Date
         dueDate: taskData.dueDate
           ? Timestamp.fromDate(new Date(taskData.dueDate))
           : Timestamp.fromDate(new Date()),
-        // Activity timestamps always start at creation time — not overridable
-        // by taskData, so they can never be spoofed by a caller.
         lastTouchedAt: createdStamp,
         statusChangedAt: createdStamp,
         priorityChangedAt: createdStamp,
@@ -115,15 +107,10 @@ export function useTasks(uid) {
     [uid]
   );
 
-  // ── UPDATE ────────────────────────────────────────────────
-  // Every manual edit stamps lastTouchedAt. status/priority get their own
-  // stamps ONLY when the value genuinely changes — re-saving a task with the
-  // same status must not reset its staleness clock.
   const updateTask = useCallback(
     async (taskId, updates) => {
       if (!uid) return;
       const taskRef = doc(db, 'users', uid, 'tasks', taskId);
-      // Convert Date objects to Timestamps
       const sanitized = { ...updates };
       if (sanitized.dueDate instanceof Date) {
         sanitized.dueDate = Timestamp.fromDate(sanitized.dueDate);
@@ -156,7 +143,6 @@ export function useTasks(uid) {
     [uid]
   );
 
-  // ── TOGGLE COMPLETE ───────────────────────────────────────
   const toggleComplete = useCallback(
     async (taskId, currentCompleted) => {
       await updateTask(taskId, {
@@ -167,7 +153,6 @@ export function useTasks(uid) {
     [updateTask]
   );
 
-  // ── ADD NOTE ──────────────────────────────────────────────
   const addNote = useCallback(
     async (taskId, noteText, authorName) => {
       if (!uid || !noteText.trim()) return;
@@ -181,7 +166,6 @@ export function useTasks(uid) {
         author: authorName || 'User',
       };
 
-      // Optimistic update handled by onSnapshot — just write to Firestore
       const existingNotes = (task.notes || []).map((n) => ({
         ...n,
         timestamp: n.timestamp instanceof Date ? Timestamp.fromDate(n.timestamp) : n.timestamp,
@@ -190,7 +174,6 @@ export function useTasks(uid) {
       try {
         await updateDoc(taskRef, {
           notes: [...existingNotes, newNote],
-          // Writing a note is real engagement — counts as touching the task
           lastTouchedAt: Timestamp.now(),
         });
       } catch (err) {
@@ -200,7 +183,6 @@ export function useTasks(uid) {
     [uid, tasks]
   );
 
-  // ── ADD ATTACHMENT (metadata only — file uploaded separately) ─
   const addAttachment = useCallback(
     async (taskId, attachment) => {
       if (!uid) return;
@@ -220,13 +202,11 @@ export function useTasks(uid) {
     [uid, tasks]
   );
 
-  // ── DELETE ────────────────────────────────────────────────
   const deleteTask = useCallback(
     async (taskId) => {
       if (!uid) return;
       const taskRef = doc(db, 'users', uid, 'tasks', taskId);
 
-      // Delete all Storage attachments for this task
       try {
         const storageRef = ref(storage, `users/${uid}/attachments/${taskId}`);
         const list = await listAll(storageRef);
@@ -245,7 +225,6 @@ export function useTasks(uid) {
     [uid]
   );
 
-  // ── HELPERS ───────────────────────────────────────────────
   const getTasksByType = useCallback(
     (type) => tasks.filter((t) => t.type === type),
     [tasks]
@@ -262,12 +241,22 @@ export function useTasks(uid) {
     const isWeekend = dayOfWeek === 'Saturday' || dayOfWeek === 'Sunday';
 
     return {
-      open: tasks.filter(
-        (t) =>
-          t.type === 'open' &&
-          t.dueDate >= today &&
-          t.dueDate < tomorrow
-      ),
+      // "Open" used to mean strictly due-today, which meant a task became
+      // invisible on the Dashboard the moment you set its due date to any
+      // other day — including the future dates you'd deliberately picked.
+      // Now: every incomplete open task EXCEPT ones already shown in Rolled
+      // Over (past-due) belongs here — due today, due later, or with no
+      // due date at all. Completed tasks still show through the end of the
+      // day they were completed on, same as before, so the checkmark stays
+      // visible as confirmation rather than vanishing instantly.
+      open: tasks.filter((t) => {
+        if (t.type !== 'open') return false;
+        if (t.rolledOver && !t.completed && t.dueDate && t.dueDate < today) return false;
+        if (t.completed) {
+          return t.completedDate && t.completedDate >= today && t.completedDate < tomorrow;
+        }
+        return true;
+      }),
       events: tasks.filter(
         (t) =>
           t.type === 'event' &&
@@ -289,10 +278,7 @@ export function useTasks(uid) {
       ),
       rolledOver: tasks.filter((t) => {
         if (!t.rolledOver || t.completed) return false;
-        // Only show in Rolled Over if the task is PAST DUE (not today)
-        // Tasks due today already show in Open Tasks section
         if (t.type === 'open' && t.dueDate < today) return true;
-        // Events that are past due and not today
         if (t.type === 'event' && t.dueDate < today) return true;
         return false;
       }),
