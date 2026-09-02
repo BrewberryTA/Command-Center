@@ -9,6 +9,7 @@ const STATUS_COLORS = {
   'Working on it': 'cyan',
   'No progress': 'muted',
   Stuck: 'red',
+  Done: 'green',
 };
 const TYPE_COLORS = {
   open: 'purple',
@@ -22,6 +23,31 @@ function formatTime(date) {
   if (!date) return '';
   const d = date instanceof Date ? date : new Date(date);
   return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+}
+
+// Local (not UTC) date/time strings for <input type="date"> and
+// <input type="datetime-local"> values — toISOString shifts to UTC and can
+// land on the wrong calendar day depending on the viewer's timezone.
+function toLocalDateInputValue(date) {
+  if (!date) return '';
+  const d = date instanceof Date ? date : new Date(date);
+  if (isNaN(d.getTime())) return '';
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function toLocalDateTimeInputValue(date) {
+  if (!date) return '';
+  const d = date instanceof Date ? date : new Date(date);
+  if (isNaN(d.getTime())) return '';
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
 function formatDuration(min) {
@@ -363,6 +389,50 @@ export function TaskCard({
               </div>
             )}
 
+            {/* Due Date (open tasks: date only, stored at local noon; events: local date+time) */}
+            {task.type === 'open' && (
+              <div>
+                <label>Due Date</label>
+                <input
+                  className="input"
+                  type="date"
+                  value={toLocalDateInputValue(task.dueDate)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (!val) {
+                      onUpdate(task.id, { dueDate: null });
+                      return;
+                    }
+                    const [y, m, d] = val.split('-').map(Number);
+                    // Noon local avoids the date rolling back a day when later
+                    // rendered near a timezone boundary.
+                    onUpdate(task.id, { dueDate: new Date(y, m - 1, d, 12, 0, 0) });
+                  }}
+                />
+              </div>
+            )}
+            {task.type === 'event' && (
+              <div>
+                <label>Due Date</label>
+                <input
+                  className="input"
+                  type="datetime-local"
+                  value={toLocalDateTimeInputValue(task.dueDate)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (!val) {
+                      onUpdate(task.id, { dueDate: null });
+                      return;
+                    }
+                    const [datePart, timePart] = val.split('T');
+                    const [y, m, d] = datePart.split('-').map(Number);
+                    const [hh, mm] = timePart.split(':').map(Number);
+                    onUpdate(task.id, { dueDate: new Date(y, m - 1, d, hh, mm, 0) });
+                  }}
+                />
+              </div>
+            )}
+
             {/* Priority (open tasks) */}
             {task.type === 'open' && (
               <div>
@@ -391,6 +461,7 @@ export function TaskCard({
                   <option>Working on it</option>
                   <option>No progress</option>
                   <option>Stuck</option>
+                  <option>Done</option>
                 </select>
               </div>
             )}
