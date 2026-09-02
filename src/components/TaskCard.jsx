@@ -84,6 +84,28 @@ function formatAge(createdAt) {
   return years === 1 ? '1 yr' : `${years} yr`;
 }
 
+// Collapsed-header due-date badge for open tasks: "Due today" / "Overdue Nd" /
+// "Due tomorrow" / "Due <month day>". Compares calendar days (not raw ms) so
+// a task due earlier today still reads "Due today" rather than "Overdue 0d".
+function formatDueBadge(dueDate) {
+  if (!dueDate) return null;
+  const d = dueDate instanceof Date ? dueDate : new Date(dueDate);
+  if (isNaN(d.getTime())) return null;
+
+  const startOfDay = (dt) => {
+    const x = new Date(dt);
+    x.setHours(0, 0, 0, 0);
+    return x;
+  };
+
+  const diffDays = Math.round((startOfDay(d) - startOfDay(new Date())) / 86400000);
+
+  if (diffDays === 0) return { text: 'Due today', overdue: false };
+  if (diffDays === 1) return { text: 'Due tomorrow', overdue: false };
+  if (diffDays < 0) return { text: `Overdue ${Math.abs(diffDays)}d`, overdue: true };
+  return { text: `Due ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`, overdue: false };
+}
+
 export function TaskCard({
   task,
   uid,
@@ -107,6 +129,30 @@ export function TaskCard({
 
   const handleFieldSave = async () => {
     if (editField === null) return;
+
+    if (editField === 'dueDate') {
+      if (!editValue) {
+        await onUpdate(task.id, { dueDate: null });
+        setEditField(null);
+        return;
+      }
+      let dueDateValue;
+      if (task.type === 'event') {
+        const [datePart, timePart] = editValue.split('T');
+        const [y, m, d] = datePart.split('-').map(Number);
+        const [hh, mm] = (timePart || '00:00').split(':').map(Number);
+        dueDateValue = new Date(y, m - 1, d, hh, mm, 0);
+      } else {
+        const [y, m, d] = editValue.split('-').map(Number);
+        // Noon local avoids the date rolling back a day when later rendered
+        // near a timezone boundary.
+        dueDateValue = new Date(y, m - 1, d, 12, 0, 0);
+      }
+      await onUpdate(task.id, { dueDate: dueDateValue });
+      setEditField(null);
+      return;
+    }
+
     await onUpdate(task.id, { [editField]: editField === 'duration' ? parseInt(editValue) || 0 : editValue });
     setEditField(null);
   };
@@ -146,6 +192,7 @@ export function TaskCard({
     if (isNaN(d.getTime())) return false;
     return (new Date() - d) / 86400000 >= 14; // flag anything 2+ weeks old
   })();
+  const dueBadge = task.type === 'open' ? formatDueBadge(task.dueDate) : null;
 
   return (
     <div
@@ -277,6 +324,18 @@ export function TaskCard({
                 📌 {age} on board
               </span>
             )}
+            {dueBadge && (
+              <span
+                className={dueBadge.overdue ? 'badge badge-red' : 'badge badge-gray'}
+                title={
+                  task.dueDate
+                    ? `Due ${(task.dueDate instanceof Date ? task.dueDate : new Date(task.dueDate)).toLocaleDateString()}`
+                    : undefined
+                }
+              >
+                {dueBadge.text}
+              </span>
+            )}
             {task.dueDate && task.type === 'event' && (
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-secondary)' }}>
                 @ {formatTime(task.dueDate)}
@@ -393,43 +452,61 @@ export function TaskCard({
             {task.type === 'open' && (
               <div>
                 <label>Due Date</label>
-                <input
-                  className="input"
-                  type="date"
-                  value={toLocalDateInputValue(task.dueDate)}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (!val) {
-                      onUpdate(task.id, { dueDate: null });
-                      return;
-                    }
-                    const [y, m, d] = val.split('-').map(Number);
-                    // Noon local avoids the date rolling back a day when later
-                    // rendered near a timezone boundary.
-                    onUpdate(task.id, { dueDate: new Date(y, m - 1, d, 12, 0, 0) });
-                  }}
-                />
+                {editField === 'dueDate' ? (
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <input
+                      className="input"
+                      type="date"
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleFieldSave(); if (e.key === 'Escape') setEditField(null); }}
+                      autoFocus
+                    />
+                    <button className="btn btn-primary" onClick={handleFieldSave}>OK</button>
+                  </div>
+                ) : (
+                  <div
+                    style={{ cursor: 'text', padding: '8px 0', color: 'var(--text-primary)', fontSize: '13px', fontFamily: 'var(--font-mono)' }}
+                    onClick={() => handleFieldEdit('dueDate', toLocalDateInputValue(task.dueDate))}
+                    title="Click to edit"
+                  >
+                    {task.dueDate
+                      ? (task.dueDate instanceof Date ? task.dueDate : new Date(task.dueDate)).toLocaleDateString()
+                      : 'Not set'}
+                    {' '}
+                    <span style={{ color: 'var(--text-muted)', fontSize: '10px' }}>✎</span>
+                  </div>
+                )}
               </div>
             )}
             {task.type === 'event' && (
               <div>
                 <label>Due Date</label>
-                <input
-                  className="input"
-                  type="datetime-local"
-                  value={toLocalDateTimeInputValue(task.dueDate)}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (!val) {
-                      onUpdate(task.id, { dueDate: null });
-                      return;
-                    }
-                    const [datePart, timePart] = val.split('T');
-                    const [y, m, d] = datePart.split('-').map(Number);
-                    const [hh, mm] = timePart.split(':').map(Number);
-                    onUpdate(task.id, { dueDate: new Date(y, m - 1, d, hh, mm, 0) });
-                  }}
-                />
+                {editField === 'dueDate' ? (
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <input
+                      className="input"
+                      type="datetime-local"
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleFieldSave(); if (e.key === 'Escape') setEditField(null); }}
+                      autoFocus
+                    />
+                    <button className="btn btn-primary" onClick={handleFieldSave}>OK</button>
+                  </div>
+                ) : (
+                  <div
+                    style={{ cursor: 'text', padding: '8px 0', color: 'var(--text-primary)', fontSize: '13px', fontFamily: 'var(--font-mono)' }}
+                    onClick={() => handleFieldEdit('dueDate', toLocalDateTimeInputValue(task.dueDate))}
+                    title="Click to edit"
+                  >
+                    {task.dueDate
+                      ? `${(task.dueDate instanceof Date ? task.dueDate : new Date(task.dueDate)).toLocaleDateString()} ${formatTime(task.dueDate)}`
+                      : 'Not set'}
+                    {' '}
+                    <span style={{ color: 'var(--text-muted)', fontSize: '10px' }}>✎</span>
+                  </div>
+                )}
               </div>
             )}
 
