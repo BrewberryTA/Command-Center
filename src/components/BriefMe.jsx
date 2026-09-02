@@ -190,16 +190,29 @@ export function buildBrief({ allTasks = [], todayTasks = {}, calendarEvents = []
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
-  const {
-    open = [], events = [], daily = [], weekly = [], monthly = [], rolledOver = [],
-  } = todayTasks;
+  // Tasks marked status "Done" are excluded from the dump entirely. Filtering
+  // here rather than telling the model to skip them means there is no chance
+  // of them leaking into the review — they are simply not in the paste.
+  const isDone = (t) => t.status === 'Done';
+
+  // Also drop anything already ticked off. getTodaysTasks() filters the
+  // today-sections by date and type only, so completed items were still
+  // landing in the dump as if they were outstanding work.
+  const live = (arr) => (arr || []).filter((t) => !isDone(t) && !t.completed);
+
+  const open = live(todayTasks.open);
+  const events = live(todayTasks.events);
+  const daily = live(todayTasks.daily);
+  const weekly = live(todayTasks.weekly);
+  const monthly = live(todayTasks.monthly);
+  const rolledOver = live(todayTasks.rolledOver);
 
   // IDs already shown in a today-section, so the backlog block doesn't repeat them
   const shown = new Set(
     [...open, ...events, ...daily, ...weekly, ...monthly, ...rolledOver].map((t) => t.id)
   );
 
-  const backlog = allTasks.filter((t) => !t.completed && !shown.has(t.id));
+  const backlog = allTasks.filter((t) => !t.completed && !isDone(t) && !shown.has(t.id));
 
   // Completed in the last 7 days — shows momentum vs. what just sits
   const weekAgo = new Date(today);
@@ -223,9 +236,13 @@ export function buildBrief({ allTasks = [], todayTasks = {}, calendarEvents = []
   lines.push('');
 
   // Explicit total so the model can verify its own coverage in Part 2
-  const openTotal = allTasks.filter((t) => !t.completed).length;
+  const openTotal = allTasks.filter((t) => !t.completed && !isDone(t)).length;
+  const doneCount = allTasks.filter((t) => !t.completed && isDone(t)).length;
   lines.push(`TOTAL OPEN ITEMS ON THE BOARD: ${openTotal}`);
   lines.push('Every one of these must appear in the printable review.');
+  if (doneCount > 0) {
+    lines.push(`(${doneCount} item(s) marked status "Done" were excluded — ignore them entirely.)`);
+  }
   lines.push('');
 
   lines.push('══ TODAY ══');
