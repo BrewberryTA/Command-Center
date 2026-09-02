@@ -5,7 +5,7 @@ import { TaskModal } from './TaskModal.jsx';
 
 const TYPE_OPTIONS = ['all', 'open', 'event', 'daily', 'weekly', 'monthly'];
 const PRIORITY_OPTIONS = ['all', 'High', 'Med', 'Low'];
-const STATUS_OPTIONS = ['all', 'Working on it', 'No progress', 'Stuck'];
+const STATUS_OPTIONS = ['all', 'Working on it', 'No progress', 'Stuck', 'Done'];
 const COMPLETION_OPTIONS = ['all', 'incomplete', 'complete'];
 
 // Sort dropdown uses explicit {value,label} pairs so it reads clearly instead
