@@ -71,6 +71,12 @@ For EVERY open item, give me a row with:
   NEEDS         — the specific next deliverable required to move it
   ACTION        — the single next step, phrased as an instruction
   WAITING ON    — me, or a named third party, or unknown
+  NOTES         — leave this cell EMPTY. Do not fill it with anything —
+                  no summary, no repeated content, no placeholder text,
+                  not even a dash. It's blank space for me to write on
+                  by hand after this is printed. Give it real width, at
+                  least as wide as the ACTION column, so there's room to
+                  actually write in it.
 
 READ EVERY NOTE ON EVERY TASK, not just the newest one. Notes are where the
 real blockers live and they are the highest-value field in this dump.
