@@ -63,6 +63,19 @@ routine or low priority. If the count of rows in your document does not
 match the count you stated, you have made an error — go back and add the
 missing ones.
 
+TABLE STRUCTURE: group the table under the same section headers used in
+the dump (Rolled Over, Open Tasks Due Today, Events, Daily Recurring, Weekly
+Recurring, Monthly Recurring, Backlog) — a short header row or label above
+each group, then that group's rows.
+
+ORDER WITHIN EACH SECTION: within every section, sort rows by priority —
+High first, then Med, then Low. Within the same priority, put OVERDUE and
+due-soon items above items due later or with no due date. Priority decides
+the order, not which section the item happened to land in — a Low-priority
+item (a weekly calendar reminder, for example) must sort below the
+High-priority items in its own section, not appear first just because
+recurring items are dumped early in the raw data.
+
 For EVERY open item, give me a row with:
 
   ITEM          — the task title, exactly as written
