@@ -43,7 +43,16 @@ cite specific task titles and day counts.
 PART 2 — THE FULL BOARD REVIEW (as a printable artifact)
 ═══════════════════════════════════════════════════════════════
 
-Produce this as a downloadable/printable artifact, not as chat text.
+Produce this as an HTML artifact — not a generated PDF file, and not chat
+text. Write it as a self-contained HTML document with embedded CSS. Do not
+use a PDF-generation tool or skill for this; the artifact itself must be
+HTML.
+
+PRINT LAYOUT: include an @page rule set to landscape orientation, and size
+the table/columns to use the full landscape width so it prints as one clean
+page-per-section rather than a narrow portrait column. This is read on paper
+and needs to look intentional when printed, not like a webpage that happened
+to print.
 
 COVERAGE IS MANDATORY AND IS THE POINT OF PART 2.
 Before you write anything, count every open item in the dump — rolled over,
