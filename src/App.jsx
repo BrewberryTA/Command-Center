@@ -210,7 +210,9 @@ export default function App() {
               loading={tasksLoading} uid={uid}
               onUpdate={updateTask} onToggleComplete={toggleComplete}
               onAddNote={addNote} onAddAttachment={addAttachment}
-              onDelete={deleteTask} authorName={authorName} />
+              onDelete={deleteTask} authorName={authorName}
+              linkedAccounts={linkedAccounts} accountTokens={accountTokens}
+              onRefreshToken={refreshAccountToken} />
           )}
 
           {activeTab === 'Tasks' && (
