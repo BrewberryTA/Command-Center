@@ -27,6 +27,37 @@ function SkeletonCard() {
   return <div className="skeleton" style={{ height: '62px', marginBottom: '8px', borderRadius: 'var(--radius)' }} />;
 }
 
+// Shown on the Dashboard itself when a linked Google account's session has
+// expired and silent auto-reconnect (see useCalendar.js) failed or was
+// blocked by the browser. Previously this state was only surfaced in the
+// Calendar tab's side panel, which is easy to miss if you work Dashboard-first.
+function CalendarReconnectBanner({ accounts, onReconnect }) {
+  if (accounts.length === 0) return null;
+  return (
+    <div style={{
+      background: 'rgba(217, 119, 6, 0.08)', border: '1px solid var(--amber)',
+      borderRadius: 'var(--radius)', padding: '10px 14px', marginBottom: '16px',
+      fontSize: '13px', color: 'var(--amber)', display: 'flex', gap: '10px',
+      alignItems: 'center', flexWrap: 'wrap',
+    }}>
+      <span>
+        ⚠ Google Calendar {accounts.length === 1 ? 'session' : 'sessions'} expired
+        {accounts.length === 1 ? ` for ${accounts[0]}` : ` for ${accounts.length} accounts`}
+      </span>
+      {accounts.map((email) => (
+        <button
+          key={email}
+          className="btn btn-secondary btn-sm"
+          onClick={() => onReconnect?.(email)}
+          style={{ fontSize: '11px', padding: '3px 10px' }}
+        >
+          Reconnect {email}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function GCalEventCard({ evt, isComplete, onToggle }) {
   const time = evt.startDate
     ? new Date(evt.startDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
@@ -113,6 +144,9 @@ export function Dashboard({
   onAddAttachment,
   onDelete,
   authorName,
+  linkedAccounts = [],
+  accountTokens = {},
+  onRefreshToken,
 }) {
   const { open = [], events = [], daily = [], weekly = [], monthly = [], rolledOver = [] } = todayTasks || {};
 
@@ -198,9 +232,12 @@ export function Dashboard({
   }
 
   const gcalEventCount = relevantGCalEvents.filter(e => !gcalCompletions[e.id]).length;
+  const disconnectedAccounts = linkedAccounts.filter((email) => !accountTokens[email]);
 
   return (
     <div>
+      <CalendarReconnectBanner accounts={disconnectedAccounts} onReconnect={onRefreshToken} />
+
       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
         <button className="btn btn-ghost" onClick={handleExportPDF}>📄 EXPORT TO PDF</button>
         <BriefMe allTasks={allTasks} todayTasks={todayTasks} calendarEvents={calendarEvents} />
