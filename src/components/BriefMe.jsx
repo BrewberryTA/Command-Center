@@ -79,6 +79,10 @@ recurring items are dumped early in the raw data.
 For EVERY open item, give me a row with:
 
   ITEM          — the task title, exactly as written
+  DUE DATE      — the due date exactly as given in the dump (e.g. "Sep 22, 2026"),
+                  plus its urgency tag in parentheses (OVERDUE by Nd / due today /
+                  due tomorrow / due in Nd). Write "none" if the item has no due
+                  date — never leave this cell blank.
   STATUS        — priority, status, days on board
   BLOCKER       — what is actually stopping this from progressing
   NEEDS         — the specific next deliverable required to move it
