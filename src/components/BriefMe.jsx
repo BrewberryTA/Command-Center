@@ -54,6 +54,17 @@ page-per-section rather than a narrow portrait column. This is read on paper
 and needs to look intentional when printed, not like a webpage that happened
 to print.
 
+PRINT MARGINS AND FIT: the @page rule must be exactly
+"@page { size: landscape; margin: 0.5in; }". Also add a print-media rule
+giving the body no extra margin of its own and making sure nothing touches
+or is cut off at the page edge. Use table-layout: fixed with the table set
+to width: 100%, let long text wrap inside cells (word-wrap: break-word),
+and keep the font small enough (about 9pt in the table) that every column
+fits inside the 0.5 inch margins with nothing clipped on the right edge.
+Repeat the table header row on every printed page (thead { display:
+table-header-group; }) and do not split a row across two pages
+(tr { page-break-inside: avoid; }).
+
 COVERAGE IS MANDATORY AND IS THE POINT OF PART 2.
 Before you write anything, count every open item in the dump — rolled over,
 due today, events, recurring, and the entire backlog. State that number at
