@@ -54,16 +54,29 @@ page-per-section rather than a narrow portrait column. This is read on paper
 and needs to look intentional when printed, not like a webpage that happened
 to print.
 
-PRINT MARGINS AND FIT: the @page rule must be exactly
-"@page { size: landscape; margin: 0.5in; }". Also add a print-media rule
-giving the body no extra margin of its own and making sure nothing touches
-or is cut off at the page edge. Use table-layout: fixed with the table set
-to width: 100%, let long text wrap inside cells (word-wrap: break-word),
-and keep the font small enough (about 9pt in the table) that every column
-fits inside the 0.5 inch margins with nothing clipped on the right edge.
-Repeat the table header row on every printed page (thead { display:
-table-header-group; }) and do not split a row across two pages
-(tr { page-break-inside: avoid; }).
+PRINT MARGINS AND FIT: this artifact is displayed inside an iframe on
+claude.ai, and browsers ignore @page margins for content inside an iframe.
+So the margin must be built into the page content itself, not left to
+@page. Do all of the following:
+  1. Keep the rule exactly "@page { size: landscape; margin: 0.5in; }" for
+     when the file is printed on its own, but do not rely on it.
+  2. Set html and body to margin: 0 and padding: 0, and put ALL content
+     inside one wrapper element that has padding: 0.5in on all four sides,
+     box-sizing: border-box, and width: 100%. This padding applies on
+     screen AND in print. NEVER set the wrapper padding, or any page
+     margin, to 0 in a print-media rule — that padding is the only margin
+     that survives printing from inside claude.ai.
+  3. Nothing may be wider than the wrapper's inner width. In print, give
+     the table no min-width, no fixed pixel width, and no horizontal
+     scrolling or overflow-x on its container. Use table-layout: fixed
+     with the table set to width: 100%, give the columns percentage
+     widths that add up to 100%, let long text wrap inside cells
+     (word-wrap: break-word; overflow-wrap: anywhere), and keep the
+     table font at about 9pt so every column fits inside the padding with
+     nothing clipped on the right edge.
+  4. Repeat the table header row on every printed page (thead {
+     display: table-header-group; }) and do not split a row across two
+     pages (tr { page-break-inside: avoid; }).
 
 COVERAGE IS MANDATORY AND IS THE POINT OF PART 2.
 Before you write anything, count every open item in the dump — rolled over,
