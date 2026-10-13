@@ -273,8 +273,16 @@ export function useTasks(uid) {
       weekly: tasks.filter(
         (t) => t.type === 'weekly' && t.recurringDay === dayOfWeek
       ),
+      // Monthly items show on their scheduled day of the month, AND stay on
+      // the Dashboard after that day if they were never completed (past due
+      // date, still incomplete). Previously a missed monthly task vanished
+      // from the Dashboard the day after its date and only lived in the
+      // Tasks tab, so it was easy to forget entirely.
       monthly: tasks.filter(
-        (t) => t.type === 'monthly' && t.recurringDayOfMonth === dayOfMonth
+        (t) =>
+          t.type === 'monthly' &&
+          (t.recurringDayOfMonth === dayOfMonth ||
+            (!t.completed && t.dueDate && t.dueDate < today))
       ),
       rolledOver: tasks.filter((t) => {
         if (!t.rolledOver || t.completed) return false;
