@@ -122,17 +122,33 @@ For EVERY open item, give me a row with:
 READ EVERY NOTE ON EVERY TASK, not just the newest one. Notes are where the
 real blockers live and they are the highest-value field in this dump.
 
+HOW TO TREAT NOTES — these rules override everything above:
+  1. Notes are listed NEWEST FIRST, and the newest note on a topic is the
+     CURRENT STATE. Older notes are history. If a newer note says a
+     requirement was received, approved, sent, completed or handled, or says
+     a person is NOT the blocker, that requirement is CLOSED. A closed
+     requirement must not appear in NEEDS, STALLED or OUTSTANDING
+     DELIVERABLES, and must not generate an ACTION.
+  2. Name a person as the BLOCKER, as WAITING ON, or inside an ACTION only if
+     a note says so. A person's name inside a task title is NOT evidence that
+     they are the holdup.
+  3. The absence of a note is not proof that something was not done. If the
+     notes do not show whether a step happened, write "verify: <what>" in
+     ACTION instead of telling me to chase it, and never state "no approval
+     logged" or similar as if it were a fact about the world.
+
 CRITICAL: when a note names a required document, study, permit, inspection,
-certificate, report, approval, or signature, that IS the NEEDS value and you
-must surface it verbatim. Examples of the pattern I care about: a note
-reading "needs a cultural resource study done" means NEEDS = "Cultural
-Resource Study." A note reading "needs a final grading cert" means NEEDS =
-"Final Grading Certificate." These are exactly the items I keep losing track
-of, and missing one makes this whole document worthless to me.
+certificate, report, approval, or signature that is still OPEN under the
+rules above, that IS the NEEDS value and you must surface it verbatim.
+Examples of the pattern I care about: a note reading "needs a cultural
+resource study done" means NEEDS = "Cultural Resource Study." A note
+reading "needs a final grading cert" means NEEDS = "Final Grading
+Certificate." These are exactly the items I keep losing track of, and
+missing one makes this whole document worthless to me.
 
 Never write "no blocker" or "none" for NEEDS unless the notes genuinely
-contain no requirement. If a task has no notes at all, write "unknown — no
-notes on file" rather than inventing something.
+contain no open requirement. If a task has no notes at all, write "unknown —
+no notes on file" rather than inventing something.
 
 After the full table, add two short sections:
 
@@ -141,11 +157,16 @@ After the full table, add two short sections:
   alone — a task on the board 60 days but not due for 2 months is lower
   priority than one on the board 10 days and due this week. For each, take
   a position: do it today, hand it off, schedule it with a real date, or
-  kill it. Do not hedge with "you may want to consider."
+  kill it. Do not hedge with "you may want to consider." Every STALLED item
+  must cite the dated note that shows the requirement still unfilled (for
+  example "per the note from 12d ago"). If you cannot cite one, leave the
+  item out. If the notes leave it unclear whether the requirement is still
+  open, list it as "verify: <what>" instead of giving a do-it-today order.
 
   OUTSTANDING DELIVERABLES — a plain checklist of every distinct document,
-  study, permit, certificate, or approval named anywhere in the notes, with
-  which item it belongs to. This is the list I want to work from.
+  study, permit, certificate, or approval named anywhere in the notes that
+  is still open, with which item it belongs to. This is the list I want to
+  work from.
 
 Format the artifact so it prints cleanly on paper: clear headings, real
 tables, no emoji, no decorative characters.
@@ -229,12 +250,12 @@ function describeTask(task) {
 
   const notes = task.notes || [];
   if (notes.length > 0) {
-    bits.push(`    notes (${notes.length}, newest first):`);
+    bits.push(`    notes (${notes.length}, newest first — the newest note is the current state):`);
     [...notes].reverse().forEach((n) => {
       const when = daysSince(n.timestamp);
       const whenLabel = when === null ? 'undated' : when === 0 ? 'today' : `${when}d ago`;
       let text = (n.text || '').replace(/\s+/g, ' ').trim();
-      if (text.length > 600) text = `${text.slice(0, 600)}…[truncated]`;
+      if (text.length > 1500) text = `${text.slice(0, 1500)}…[truncated]`;
       bits.push(`      · (${whenLabel}) ${text}`);
     });
   } else {
