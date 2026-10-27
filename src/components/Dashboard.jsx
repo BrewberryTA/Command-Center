@@ -150,7 +150,7 @@ export function Dashboard({
 }) {
   const { open = [], events = [], daily = [], weekly = [], monthly = [], rolledOver = [] } = todayTasks || {};
 
-  const [taskSort, setTaskSort] = useState('priority');
+  const [taskSort, setTaskSort] = useState('dueDate');
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -206,9 +206,29 @@ export function Dashboard({
 
   const sortTasksColumn = (tasks) => {
     if (taskSort === 'dateAdded') return sortByDateAdded(tasks);
-    if (taskSort === 'dueDate') return sortByDueDate(tasks);
-    return sortByPriority(tasks);
+    return sortByDueDate(tasks);
   };
+
+  // Priority columns: every open task plus anything in the (rarely used)
+  // past-due Rolled Over bucket, de-duplicated, split by priority. Rolled
+  // tasks keep their orange Rolled badge/border from TaskCard. A task with
+  // no priority set lands in Med, matching sortByPriority's fallback.
+  const priorityPool = [];
+  const poolIds = new Set();
+  [...rolledOver, ...open].forEach((t) => {
+    if (poolIds.has(t.id)) return;
+    poolIds.add(t.id);
+    priorityPool.push(t);
+  });
+  const priorityOf = (t) => (t.priority === 'High' || t.priority === 'Low' ? t.priority : 'Med');
+  const priorityColumns = [
+    { key: 'Low', title: 'Low Priority', color: 'var(--text-secondary)' },
+    { key: 'Med', title: 'Med Priority', color: 'var(--amber)' },
+    { key: 'High', title: 'High Priority', color: 'var(--red)' },
+  ].map((col) => ({
+    ...col,
+    tasks: sortTasksColumn(priorityPool.filter((t) => priorityOf(t) === col.key)),
+  }));
 
   const handleExportPDF = async () => {
     try {
@@ -238,57 +258,49 @@ export function Dashboard({
     <div>
       <CalendarReconnectBanner accounts={disconnectedAccounts} onReconnect={onRefreshToken} />
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
+        <select
+          className="input"
+          value={taskSort}
+          onChange={(e) => setTaskSort(e.target.value)}
+          title="Sort tasks within each priority column"
+          style={{
+            fontSize: '11px',
+            padding: '4px 8px',
+            minWidth: 0,
+            width: 'auto',
+            marginRight: 'auto',
+            fontFamily: 'var(--font-mono)',
+            textTransform: 'none',
+          }}
+        >
+          <option value="dueDate">Sort tasks: Due Date</option>
+          <option value="dateAdded">Sort tasks: Date Added</option>
+        </select>
         <button className="btn btn-ghost" onClick={handleExportPDF}>📄 EXPORT TO PDF</button>
         <BriefMe allTasks={allTasks} todayTasks={todayTasks} calendarEvents={calendarEvents} />
       </div>
 
       <div className="dashboard-swipe-hint">
-        <span>← swipe between Tasks / Recurring / Calendar →</span>
+        <span>← swipe between Low / Med / High / Recurring / Calendar →</span>
       </div>
 
       <div className="dashboard-columns">
-        <div className="dashboard-column">
-          <div
-            className="dashboard-column-title"
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}
-          >
-            <span>Tasks</span>
-            <select
-              className="input"
-              value={taskSort}
-              onChange={(e) => setTaskSort(e.target.value)}
-              title="Sort Open Tasks & Rolled Over"
-              style={{
-                fontSize: '10px',
-                padding: '3px 6px',
-                minWidth: 0,
-                width: 'auto',
-                fontFamily: 'var(--font-mono)',
-                textTransform: 'none',
-              }}
+        {priorityColumns.map((col) => (
+          <div className="dashboard-column" key={col.key}>
+            <div
+              className="dashboard-column-title"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', color: col.color, borderBottomColor: col.color }}
             >
-              <option value="priority">Sort: Priority</option>
-              <option value="dueDate">Sort: Due Date</option>
-              <option value="dateAdded">Sort: Date Added</option>
-            </select>
-          </div>
-
-          {rolledOver.length > 0 && (
-            <section style={{ marginBottom: '24px' }}>
-              <SectionHeader title="↩ Rolled Over" color="var(--amber)" count={rolledOver.length} />
-              {sortTasksColumn(rolledOver).map((task) => <TaskCard {...taskCardProps(task)} />)}
-            </section>
-          )}
-
-          <section style={{ marginBottom: '24px' }}>
-            <SectionHeader title="Open Tasks" count={open.length} />
-            {open.length === 0
-              ? <EmptySection message="No open tasks today" />
-              : sortTasksColumn(open).map((task) => <TaskCard {...taskCardProps(task)} />)
+              <span>{col.title}</span>
+              <span className="count" style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{col.tasks.length}</span>
+            </div>
+            {col.tasks.length === 0
+              ? <EmptySection message={`No ${col.key.toLowerCase()} priority tasks`} />
+              : col.tasks.map((task) => <TaskCard {...taskCardProps(task)} />)
             }
-          </section>
-        </div>
+          </div>
+        ))}
 
         <div className="dashboard-column">
           <div className="dashboard-column-title">Recurring</div>

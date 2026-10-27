@@ -186,12 +186,21 @@ label { display: block; font-size: 12px; font-weight: 500; color: var(--text-sec
   .modal-box { max-height: 95vh; border-radius: var(--radius); }
 }
 
-/* ── Dashboard 3-column layout ─────────────────────────────── */
+/* ── Dashboard 5-column layout ─────────────────────────────── */
+/* Low | Med | High | Recurring | Calendar. Dashboard tab drops the
+   1400px cap so the columns use the full monitor width. */
+.app-container--wide { max-width: none; }
+
 .dashboard-columns {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
   align-items: start;
+}
+
+/* Mid-size screens: 3 priority columns on top, Recurring + Calendar wrap below */
+@media (max-width: 1400px) and (min-width: 901px) {
+  .dashboard-columns { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 .dashboard-column-title {
@@ -206,7 +215,7 @@ label { display: block; font-size: 12px; font-weight: 500; color: var(--text-sec
 }
 
 @media (max-width: 900px) {
-  /* Horizontal swipe between the 3 columns on small screens */
+  /* Horizontal swipe between the columns on small screens */
   .dashboard-columns {
     display: flex;
     overflow-x: auto;

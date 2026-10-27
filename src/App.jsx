@@ -178,7 +178,7 @@ export default function App() {
 
       {/* Main content */}
       <main style={{ paddingTop: `${TOP_OFFSET}px`, minHeight: '100vh' }}>
-        <div className="app-container" style={{ padding: '24px 20px 60px' }}>
+        <div className={`app-container${activeTab === 'Dashboard' ? ' app-container--wide' : ''}`} style={{ padding: '24px 20px 60px' }}>
 
           {/* Error banner */}
           {(tasksError || toolsError || calError) && (
